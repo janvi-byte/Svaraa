@@ -1,4 +1,5 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'node:url';
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
@@ -8,6 +9,8 @@ import conversationRoutes from './routes/conversationRoutes.js';
 import progressRoutes from './routes/progressRoutes.js';
 import speakingRoutes from './routes/speakingRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
+
+dotenv.config({ path: fileURLToPath(new URL('./.env', import.meta.url)) });
 
 const app = express();
 const allowedOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
