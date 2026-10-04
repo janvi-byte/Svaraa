@@ -1,0 +1,3 @@
+import { ArrowRight, MessageCircle } from 'lucide-react';
+type TutorCardProps = { name: string; role: string; initials: string; color: string; description: string; onSelect?: () => void };
+export function TutorCard({ name, role, initials, color, description, onSelect }: TutorCardProps) { return <button className="tutor-card" onClick={onSelect}><div className={`tutor-avatar ${color}`}>{initials}</div><div className="tutor-info"><div className="tutor-name"><strong>{name}</strong><span className="online-dot" /></div><small>{role}</small><p>{description}</p><span className="tutor-cta"><MessageCircle size={14} /> Start a conversation <ArrowRight size={14} /></span></div></button>; }

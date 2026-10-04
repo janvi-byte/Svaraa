@@ -1,0 +1,2 @@
+import { CheckCircle2, Lightbulb, Volume2 } from 'lucide-react';
+export function FeedbackCard({ type, title, children }: { type: 'good' | 'tip'; title: string; children: string }) { const good = type === 'good'; return <div className={`feedback-card ${good ? 'good' : 'tip'}`}><span className="feedback-icon">{good ? <CheckCircle2 size={19} /> : <Lightbulb size={19} />}</span><div><strong>{title}</strong><p>{children}</p>{good && <button className="listen-link"><Volume2 size={14} /> Listen to example</button>}</div></div>; }

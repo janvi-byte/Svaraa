@@ -1,0 +1,4 @@
+import { ArrowUpRight, Check, TrendingUp } from 'lucide-react';
+type ScoreCardProps = { label: string; value: string; change?: string; tone?: 'teal' | 'coral' | 'yellow' | 'blue' };
+export function ScoreCard({ label, value, change, tone = 'teal' }: ScoreCardProps) { return <div className={`score-card ${tone}`}><div className="score-card-top"><span className="score-label">{label}</span><span className="score-check"><Check size={14} /></span></div><strong>{value}</strong>{change && <span className="score-change"><TrendingUp size={13} /> {change}</span>}</div>; }
+export function MiniScore({ label, value, detail }: { label: string; value: string; detail: string }) { return <div className="mini-score"><span>{label}</span><strong>{value}</strong><small><ArrowUpRight size={13} /> {detail}</small></div>; }

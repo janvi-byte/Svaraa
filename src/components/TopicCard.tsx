@@ -1,0 +1,3 @@
+import { ArrowRight, Clock3, Flame, LockKeyhole } from 'lucide-react';
+type TopicCardProps = { title: string; subtitle: string; difficulty: string; duration: string; locked?: boolean; onSelect?: () => void };
+export function TopicCard({ title, subtitle, difficulty, duration, locked, onSelect }: TopicCardProps) { return <button className={`topic-card ${locked ? 'locked' : ''}`} onClick={onSelect}><div className="topic-art"><span className="topic-flame"><Flame size={16} /></span>{locked ? <LockKeyhole size={20} /> : <span className="topic-arrow"><ArrowRight size={18} /></span>}</div><div className="topic-body"><div className="topic-meta"><span>{difficulty}</span><span><Clock3 size={13} /> {duration}</span></div><h3>{title}</h3><p>{subtitle}</p></div></button>; }
