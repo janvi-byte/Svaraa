@@ -71,3 +71,23 @@ export async function speakingHistory(req, res, next) {
     return next(error);
   }
 }
+export async function analyzeSpeaking(req, res, next) {
+  try {
+    const { transcript, durationSeconds = 0 } = req.body;
+
+    if (!transcript?.trim()) {
+      return res.status(400).json({
+        message: 'Transcript is required for analysis.',
+      });
+    }
+
+    const analysis = await analyzeSpeakingSession({
+      transcript,
+      durationSeconds,
+    });
+
+    return res.json(analysis);
+  } catch (error) {
+    return next(error);
+  }
+}
