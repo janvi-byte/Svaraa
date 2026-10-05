@@ -54,3 +54,31 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
 
   return payload as T;
 }
+
+export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  const headers = new Headers();
+  const token = getStoredToken();
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, { method: 'POST', headers, body: formData });
+  } catch {
+    throw new ApiError('Unable to reach Speakora. Check that the backend is running and try again.', 0);
+  }
+
+  const payload: unknown = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    if (response.status === 401) {
+      window.dispatchEvent(new Event('speakora:auth-expired'));
+    }
+    const message = typeof payload === 'object' && payload !== null && 'message' in payload && typeof payload.message === 'string'
+      ? payload.message
+      : 'Something went wrong. Please try again.';
+    throw new ApiError(message, response.status);
+  }
+
+  return payload as T;
+}
