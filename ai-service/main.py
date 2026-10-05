@@ -2,6 +2,7 @@ import os
 import tempfile
 from contextlib import asynccontextmanager
 from typing import Literal
+from analyzer import analyze_text
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile, status
@@ -45,16 +46,22 @@ class HealthResponse(BaseModel):
 
 
 class AnalyzeRequest(BaseModel):
-    session_id: str = Field(..., description="Identifier of the speaking session to analyze")
-    audio_format: str = Field(..., description="Format of the submitted audio, e.g. 'webm' or 'wav'")
-    duration_seconds: float = Field(..., ge=0, description="Length of the recording in seconds")
-    language: str = Field(default="en", description="BCP-47 language tag for the spoken content")
+    transcript: str = Field(..., min_length=1, max_length=10000)
+    duration_seconds: float = Field(default=0, ge=0)
 
 
 class AnalyzeResponse(BaseModel):
-    session_id: str
-    status: Literal["not_implemented"]
-    message: str
+    overall: int
+    fluency: int
+    vocabulary: int
+    grammar: int
+    pacing: int
+    filler_count: int
+    words_per_minute: int
+    vocabulary_diversity: int
+    repeated_phrase_count: int
+    feedback: list[str]
+    strengths: list[str]
 
 
 class TranscribeResponse(BaseModel):
@@ -88,16 +95,14 @@ async def health() -> HealthResponse:
     return HealthResponse(status="ok", service="speakora-ai")
 
 
-@app.post("/analyze", response_model=AnalyzeResponse, status_code=status.HTTP_501_NOT_IMPLEMENTED)
+@app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail={
-            "session_id": request.session_id,
-            "status": "not_implemented",
-            "message": "AI analysis is not yet available. This endpoint is a placeholder.",
-        },
+    result = analyze_text(
+        request.transcript,
+        request.duration_seconds
     )
+
+    return AnalyzeResponse(**result)
 
 
 @app.post("/transcribe", response_model=TranscribeResponse)
