@@ -13,6 +13,14 @@ const conversationSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     tutor: { type: String, default: 'Maya' },
     topic: { type: String, trim: true },
+    mode: {
+      type: String,
+      enum: ['conversation', 'roleplay', 'debate'],
+      default: 'conversation',
+    },
+    scenario: { type: String, trim: true },
+    debateTopic: { type: String, trim: true },
+    debatePosition: { type: String, enum: ['for', 'against'], default: 'for' },
     messages: { type: [messageSchema], default: [] },
   },
   { timestamps: true }

@@ -304,6 +304,165 @@ async def transcribe(
                     pass
 
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+
+
+@app.post("/chat")
+def chat(request: ChatRequest):
+    try:
+        from analyzer import (
+            detect_fillers,
+            detect_grammar_errors,
+            detect_vocabulary_upgrades,
+            normalize_text,
+            split_sentences,
+        )
+
+        messages = request.messages
+
+        if not messages:
+            raise HTTPException(
+                status_code=400,
+                detail="No messages provided.",
+            )
+
+        system_content = ""
+        conversation_text = []
+
+        for msg in messages:
+            if msg.role == "system":
+                system_content = msg.content
+            elif msg.role == "user":
+                conversation_text.append(msg.content)
+
+        user_text = " ".join(conversation_text[-3:]) if conversation_text else ""
+
+        filler_count = detect_fillers(user_text) if user_text else 0
+        grammar_errors = detect_grammar_errors(user_text) if user_text else []
+        vocab_upgrades = detect_vocabulary_upgrades(user_text, "English") if user_text else []
+        sentences = split_sentences(user_text) if user_text else []
+
+        reply_parts = []
+
+        last_user_msg = conversation_text[-1] if conversation_text else ""
+
+        if last_user_msg:
+            if filler_count > 2:
+                reply_parts.append(
+                    "I noticed a few filler words in your response."
+                )
+
+            if grammar_errors:
+                first_error = grammar_errors[0]
+                reply_parts.append(
+                    f"Quick note: instead of \"{first_error['original']}\", "
+                    f"try \"{first_error['correction']}\"."
+                )
+
+            if vocab_upgrades:
+                first_upgrade = vocab_upgrades[0]
+                reply_parts.append(
+                    f"Consider using \"{first_upgrade['suggested_word']}\" "
+                    f"instead of \"{first_upgrade['used_word']}\"."
+                )
+
+            if len(sentences) <= 1 and len(last_user_msg.split()) < 15:
+                reply_parts.append(
+                    "Could you tell me a bit more about that?"
+                )
+
+            if not reply_parts:
+                word_count = len(last_user_msg.split())
+                if word_count < 10:
+                    reply_parts.append(
+                        "That's a start. Can you expand on that idea?"
+                    )
+                else:
+                    reply_parts.append(
+                        "That's a good point. What made you think of it that way?"
+                    )
+        else:
+            reply_parts.append(
+                "Hello! I'm here to help you practice speaking. "
+                "What would you like to talk about today?"
+            )
+
+        reply = " ".join(reply_parts)
+
+        return {"reply": reply}
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Chat failed: {error}",
+        )
+
+
+@app.post("/pronunciation-check")
+def pronunciation_check(request: AnalyzeRequest):
+    try:
+        from analyzer import normalize_text, words
+
+        transcript = normalize_text(request.transcript)
+        token_list = words(transcript)
+
+        if not token_list:
+            raise HTTPException(
+                status_code=400,
+                detail="No words detected for pronunciation practice.",
+            )
+
+        difficult_words = []
+        long_words = [w for w in set(token_list) if len(w) >= 7]
+
+        for word in long_words[:10]:
+            syllable_count = max(
+                1,
+                sum(
+                    1
+                    for ch in word.lower()
+                    if ch in "aeiou"
+                ),
+            )
+
+            difficult_words.append(
+                {
+                    "word": word,
+                    "syllables": syllable_count,
+                    "guidance": f"Break '{word}' into {syllable_count} syllables and say each one clearly.",
+                    "example": f"Practice saying: {word}. {word}. {word}.",
+                }
+            )
+
+        return {
+            "difficult_words": difficult_words,
+            "total_words": len(token_list),
+            "unique_words": len(set(token_list)),
+            "note": (
+                "This is word-level pronunciation guidance based on your transcript. "
+                "For phoneme-level accuracy, a dedicated speech alignment model would be needed."
+            ),
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Pronunciation check failed: {error}",
+        )
+
+
 if __name__ == "__main__":
     import uvicorn
 

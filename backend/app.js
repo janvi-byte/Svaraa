@@ -10,6 +10,8 @@ import progressRoutes from './routes/progressRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
 import retryRoutes from './routes/retryRoutes.js';
 import speakingRoutes from './routes/speakingRoutes.js';
+import lessonRoutes from './routes/lessonRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 
 dotenv.config({ path: fileURLToPath(new URL('./.env', import.meta.url)) });
@@ -28,6 +30,8 @@ app.use('/api/progress', progressRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/retry', retryRoutes);
 app.use('/api/conversation', conversationRoutes);
+app.use('/api/lessons', lessonRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use(notFound);
 app.use(errorHandler);
 

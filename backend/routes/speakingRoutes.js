@@ -11,6 +11,7 @@ import {
   transcribeAudio,
   transcribeUpload,
 } from '../controllers/transcribeController.js';
+import { checkPronunciation } from '../controllers/pronunciationController.js';
 
 const router = Router();
 
@@ -20,6 +21,7 @@ router.get('/topics/random', randomTopic);
 router.post('/start', startSpeakingSession);
 router.post('/transcribe', transcribeUpload, transcribeAudio);
 router.post('/analyze', analyzeSpeaking);
+router.post('/analyze/pronunciation', checkPronunciation);
 router.post('/:sessionId/submit', submitSpeakingSession);
 router.get('/history', speakingHistory);
 

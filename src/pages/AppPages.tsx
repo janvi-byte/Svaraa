@@ -810,6 +810,61 @@ function Dashboard({ navigate }: { navigate: Navigate }) {
           </button>
         </section>
 
+        {profileData && profileData.profile.sessionsAnalyzed > 0 && (
+          <section className="speaking-profile-card">
+            <div className="section-heading">
+              <div>
+                <span className="eyebrow">Speaking profile</span>
+                <h2>Your skills snapshot</h2>
+              </div>
+              <span className="profile-sessions">
+                {profileData.profile.sessionsAnalyzed} sessions
+              </span>
+            </div>
+
+            <div className="profile-skills-grid">
+              <div className="profile-skill-item">
+                <span className="profile-skill-label">Strongest</span>
+                <strong className="profile-skill-value">
+                  {profileData.profile.strongestSkill || '—'}
+                </strong>
+              </div>
+              <div className="profile-skill-item">
+                <span className="profile-skill-label">Needs attention</span>
+                <strong className="profile-skill-value">
+                  {profileData.profile.weakestSkill || '—'}
+                </strong>
+              </div>
+              <div className="profile-skill-item">
+                <span className="profile-skill-label">Improving</span>
+                <strong className="profile-skill-value">
+                  {profileData.profile.improvingSkill || '—'}
+                </strong>
+              </div>
+              <div className="profile-skill-item">
+                <span className="profile-skill-label">Trend</span>
+                <strong className="profile-skill-value">
+                  {profileData.profile.recentScoreTrend || '—'}
+                </strong>
+              </div>
+            </div>
+
+            <div className="profile-scores-bar">
+              {[
+                { label: 'Grammar', value: profileData.profile.avgGrammar },
+                { label: 'Fluency', value: profileData.profile.avgFluency },
+                { label: 'Vocabulary', value: profileData.profile.avgVocabulary },
+                { label: 'Pacing', value: profileData.profile.avgPacing },
+              ].map((skill) => (
+                <div key={skill.label} className="profile-score-mini">
+                  <span className="profile-score-label">{skill.label}</span>
+                  <span className="profile-score-number">{skill.value}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="dashboard-practice">
           <div className="section-heading">
             <div>

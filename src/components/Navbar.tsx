@@ -1,10 +1,16 @@
-import { Bell, ChevronDown, Menu, Sparkles } from 'lucide-react';
+import { Bell, ChevronDown, Menu, Sparkles, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import {
   getSpeakingHistory,
   type SpeakingSession,
 } from '@/services/speakingService';
+import {
+  getNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  type Notification,
+} from '@/services/profileService';
 
 type NavbarProps = {
   onMenu: () => void;
@@ -14,6 +20,9 @@ type NavbarProps = {
 export function Navbar({ onMenu, onNavigate }: NavbarProps) {
   const { user } = useAuth();
   const [sessions, setSessions] = useState<SpeakingSession[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const displayName = user?.name || 'Alex Rivera';
   const initials = displayName
@@ -40,7 +49,23 @@ export function Navbar({ onMenu, onNavigate }: NavbarProps) {
       }
     }
 
+    async function loadNotifications() {
+      try {
+        const response = await getNotifications();
+        if (mounted) {
+          setNotifications(response.notifications || []);
+          setUnreadCount(response.unreadCount || 0);
+        }
+      } catch {
+        if (mounted) {
+          setNotifications([]);
+          setUnreadCount(0);
+        }
+      }
+    }
+
     loadHistory();
+    loadNotifications();
 
     return () => {
       mounted = false;
@@ -80,6 +105,32 @@ export function Navbar({ onMenu, onNavigate }: NavbarProps) {
     streakDate.setDate(streakDate.getDate() - 1);
   }
 
+  const handleNotificationClick = async (notification: Notification) => {
+    if (!notification.read) {
+      try {
+        await markNotificationRead(notification._id);
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n._id === notification._id ? { ...n, read: true } : n
+          )
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch {
+        // ignore
+      }
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch {
+      // ignore
+    }
+  };
+
   return (
     <header className="topbar">
       <button
@@ -109,9 +160,72 @@ export function Navbar({ onMenu, onNavigate }: NavbarProps) {
           <span>{streak}</span> day streak
         </button>
 
-        <button className="icon-button" aria-label="Notifications">
-          <Bell size={19} />
-        </button>
+        <div className="notification-wrapper">
+          <button
+            className="icon-button"
+            aria-label="Notifications"
+            onClick={() => setShowNotifications((prev) => !prev)}
+          >
+            <Bell size={19} />
+            {unreadCount > 0 && (
+              <span className="notification-badge">{unreadCount}</span>
+            )}
+          </button>
+
+          {showNotifications && (
+            <div className="notification-dropdown">
+              <div className="notification-header">
+                <strong>Notifications</strong>
+                <div className="notification-header-actions">
+                  {unreadCount > 0 && (
+                    <button
+                      className="text-link"
+                      onClick={handleMarkAllRead}
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                  <button
+                    className="icon-button"
+                    onClick={() => setShowNotifications(false)}
+                    aria-label="Close notifications"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {notifications.length === 0 ? (
+                <p className="notification-empty">
+                  No notifications yet. Complete a practice to get updates.
+                </p>
+              ) : (
+                <div className="notification-list">
+                  {notifications.slice(0, 10).map((notification) => (
+                    <button
+                      key={notification._id}
+                      className={`notification-item ${notification.read ? 'read' : 'unread'}`}
+                      onClick={() => handleNotificationClick(notification)}
+                    >
+                      <div className="notification-title">
+                        {notification.title}
+                      </div>
+                      <div className="notification-message">
+                        {notification.message}
+                      </div>
+                      <div className="notification-date">
+                        {new Date(notification.createdAt).toLocaleDateString(
+                          'en-US',
+                          { month: 'short', day: 'numeric' }
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         <button
           className="profile-chip"

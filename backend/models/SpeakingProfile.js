@@ -63,6 +63,11 @@ const speakingProfileSchema = new mongoose.Schema(
       },
     ],
     recentScores: [skillScoreSchema],
+    recentScoreTrend: {
+      type: String,
+      enum: ['improving', 'stable', 'declining', ''],
+      default: '',
+    },
     lastUpdatedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }

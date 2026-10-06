@@ -68,6 +68,7 @@ export async function calculateOrUpdateProfile(userId) {
           weakestSkill: '',
           improvingSkill: '',
           decliningSkill: '',
+          recentScoreTrend: '',
           currentDifficulty: 'Easy',
           recentTopics: [],
           recentScores: [],
@@ -114,6 +115,7 @@ export async function calculateOrUpdateProfile(userId) {
 
   let improvingSkill = '';
   let decliningSkill = '';
+  let recentScoreTrend = '';
 
   if (count >= MIN_SESSIONS_FOR_TREND) {
     const midpoint = Math.floor(count / 2);
@@ -131,6 +133,17 @@ export async function calculateOrUpdateProfile(userId) {
         maxDecline = trends[skill];
         decliningSkill = skill;
       }
+    }
+
+    const olderOverall = olderSessions.reduce((sum, s) => sum + (s.analysis.overall || 0), 0) / olderSessions.length;
+    const recentOverall = recentSessions.reduce((sum, s) => sum + (s.analysis.overall || 0), 0) / recentSessions.length;
+    const overallDelta = Math.round(recentOverall - olderOverall);
+    if (overallDelta >= 5) {
+      recentScoreTrend = 'improving';
+    } else if (overallDelta <= -5) {
+      recentScoreTrend = 'declining';
+    } else {
+      recentScoreTrend = 'stable';
     }
   }
 

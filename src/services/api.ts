@@ -215,6 +215,49 @@ export async function apiPost<T>(
 
 
 // ============================================================
+// PUT JSON
+// ============================================================
+
+export async function apiPut<T>(
+  path: string,
+  body: unknown
+): Promise<T> {
+  const headers = new Headers({
+    'Content-Type': 'application/json',
+  });
+
+  const token = getStoredToken();
+
+  if (token) {
+    headers.set(
+      'Authorization',
+      `Bearer ${token}`
+    );
+  }
+
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `${API_URL}${path}`,
+      {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(body),
+      }
+    );
+  } catch {
+    throw new ApiError(
+      'Unable to reach Speakora. Check that the backend is running and try again.',
+      0
+    );
+  }
+
+  return handleResponse<T>(response);
+}
+
+
+// ============================================================
 // POST FOR FILE UPLOAD
 // ============================================================
 

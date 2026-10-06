@@ -6,6 +6,7 @@ import { analyzeSpeakingSession } from '../services/analysisService.js';
 import { calculateOrUpdateProfile } from '../services/profileService.js';
 import { updateVocabularyProfile } from '../services/vocabularyService.js';
 import { addAttemptToRetryGroup } from './retryController.js';
+import { generateNotifications } from './notificationController.js';
 import Topic from '../models/Topic.js';
 import SpeakingProfile from '../models/SpeakingProfile.js';
 
@@ -153,6 +154,7 @@ export async function submitSpeakingSession(req, res) {
         session,
         savedAnalysis
       );
+      await generateNotifications(req.user._id);
     } catch (profileError) {
       console.error('Profile update error:', profileError.message);
     }
