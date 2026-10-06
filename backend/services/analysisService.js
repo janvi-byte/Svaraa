@@ -1,6 +1,10 @@
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8001';
+const AI_SERVICE_URL =
+  process.env.AI_SERVICE_URL || 'http://localhost:8001';
 
-export async function analyzeSpeakingSession(session) {
+export async function analyzeSpeakingSession(
+  session,
+  preferredLanguage = 'English'
+) {
   if (!session?.transcript?.trim()) {
     return {
       status: 'pending',
@@ -17,6 +21,7 @@ export async function analyzeSpeakingSession(session) {
       body: JSON.stringify({
         transcript: session.transcript,
         duration_seconds: session.durationSeconds || 0,
+        preferred_language: preferredLanguage,
       }),
     });
 
@@ -24,7 +29,9 @@ export async function analyzeSpeakingSession(session) {
 
     if (!response.ok) {
       throw new Error(
-        payload?.detail || payload?.message || 'AI analysis failed.'
+        payload?.detail ||
+          payload?.message ||
+          'AI analysis failed.'
       );
     }
 
@@ -37,7 +44,9 @@ export async function analyzeSpeakingSession(session) {
 
     return {
       status: 'pending',
-      message: error.message || 'AI analysis service is unavailable.',
+      message:
+        error.message ||
+        'AI analysis service is unavailable.',
     };
   }
 }
