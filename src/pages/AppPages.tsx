@@ -52,8 +52,6 @@ import {
 
   PageShell,
 
-  ProgressChart,
-
   ScoreCard,
 
   Sidebar,
@@ -95,6 +93,11 @@ import {
   type SpeakingSession,
   type SpeakingTopic,
 } from '@/services/speakingService';
+
+import {
+  getProfile,
+  type ProfileResponse,
+} from '@/services/profileService';
 
 type Navigate = (path: string) => void;
 
@@ -532,6 +535,7 @@ function Dashboard({ navigate }: { navigate: Navigate }) {
   const { user } = useAuth();
   const [sessions, setSessions] = useState<SpeakingSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profileData, setProfileData] = useState<ProfileResponse | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -554,7 +558,19 @@ function Dashboard({ navigate }: { navigate: Navigate }) {
       }
     }
 
+    async function loadProfile() {
+      try {
+        const response = await getProfile();
+        if (mounted) {
+          setProfileData(response);
+        }
+      } catch {
+        // Profile is optional on the dashboard
+      }
+    }
+
     loadHistory();
+    loadProfile();
 
     return () => {
       mounted = false;
@@ -700,7 +716,8 @@ function Dashboard({ navigate }: { navigate: Navigate }) {
             </h2>
 
             <p>
-              A 2-minute speaking challenge designed around your progress.
+              {profileData?.nextChallenge ||
+                'A 2-minute speaking challenge designed around your progress.'}
             </p>
 
             <button
@@ -890,7 +907,7 @@ function PracticePage({ navigate }: { navigate: Navigate }) {
       clearLatestAnalysis();
 
       const { topic: randomTopic } =
-        await getRandomTopic(excludeTopicId);
+        await getRandomTopic(excludeTopicId, true);
 
       const { session } =
         await startSpeakingSession(randomTopic._id);
@@ -1435,12 +1452,6 @@ function ResultsPage({ navigate }: { navigate: Navigate }) {
   );
 }
 
-
-function RotateIcon() {
-
-  return <ArrowRight size={15} />;
-
-}
 
 function ProgressPage({ navigate }: { navigate: Navigate }) {
   const [sessions, setSessions] = useState<SpeakingSession[]>([]);

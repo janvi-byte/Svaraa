@@ -98,6 +98,11 @@ const analysisResultSchema = new mongoose.Schema(
       trim: true,
       default: 'English',
     },
+    improvedAnswer: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     feedback: {
       type: [String],
       default: [],

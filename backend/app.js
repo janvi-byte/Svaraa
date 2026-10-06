@@ -7,6 +7,8 @@ import assessmentRoutes from './routes/assessmentRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import conversationRoutes from './routes/conversationRoutes.js';
 import progressRoutes from './routes/progressRoutes.js';
+import profileRoutes from './routes/profileRoutes.js';
+import retryRoutes from './routes/retryRoutes.js';
 import speakingRoutes from './routes/speakingRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 
@@ -23,6 +25,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/assessment', assessmentRoutes);
 app.use('/api/speaking', speakingRoutes);
 app.use('/api/progress', progressRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/retry', retryRoutes);
 app.use('/api/conversation', conversationRoutes);
 app.use(notFound);
 app.use(errorHandler);

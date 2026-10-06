@@ -1,14 +1,30 @@
 import SpeakingSession from '../models/SpeakingSession.js';
 import AnalysisResult from '../models/AnalysisResult.js';
 import { getRandomTopic } from '../services/topicService.js';
+import { getAdaptiveTopic } from '../services/adaptiveService.js';
 import { analyzeSpeakingSession } from '../services/analysisService.js';
+import { calculateOrUpdateProfile } from '../services/profileService.js';
+import { updateVocabularyProfile } from '../services/vocabularyService.js';
+import { addAttemptToRetryGroup } from './retryController.js';
 import Topic from '../models/Topic.js';
+import SpeakingProfile from '../models/SpeakingProfile.js';
 
 export async function randomTopic(req, res) {
   try {
-    const { excludeTopicId } = req.query;
+    const { excludeTopicId, adaptive } = req.query;
 
-    const topic = await getRandomTopic(excludeTopicId || null);
+    let topic;
+
+    if (adaptive === 'true') {
+      const profile = await SpeakingProfile.findOne({ user: req.user._id });
+      if (profile && profile.sessionsAnalyzed >= 3) {
+        topic = await getAdaptiveTopic(req.user._id, excludeTopicId || null);
+      } else {
+        topic = await getRandomTopic(excludeTopicId || null);
+      }
+    } else {
+      topic = await getRandomTopic(excludeTopicId || null);
+    }
 
     return res.json({ topic });
   } catch (error) {
@@ -113,6 +129,7 @@ export async function submitSpeakingSession(req, res) {
         vocabularyUpgrades: analysis.vocabulary_upgrades || [],
         preferredLanguage:
           analysis.preferred_language || preferredLanguage,
+        improvedAnswer: analysis.improved_answer || '',
         feedback: analysis.feedback || [],
         strengths: analysis.strengths || [],
         status: 'complete',
@@ -126,6 +143,19 @@ export async function submitSpeakingSession(req, res) {
 
     session.status = 'analyzed';
     await session.save();
+
+    try {
+      await calculateOrUpdateProfile(req.user._id);
+      await updateVocabularyProfile(req.user._id, session.transcript);
+      await addAttemptToRetryGroup(
+        req.user._id,
+        session.topic,
+        session,
+        savedAnalysis
+      );
+    } catch (profileError) {
+      console.error('Profile update error:', profileError.message);
+    }
 
     return res.json({
       session,

@@ -75,6 +75,10 @@ export async function submitRecording(
     vocabulary: result.analysis.vocabulary ?? 0,
     grammar: result.analysis.grammar ?? 0,
     pacing: result.analysis.pacing ?? 0,
+    improved_answer:
+      result.analysis.improved_answer ??
+      result.analysis.improvedAnswer ??
+      '',
     filler_count:
       result.analysis.filler_count ??
       result.analysis.fillerCount ??

@@ -56,6 +56,7 @@ class AnalyzeResponse(BaseModel):
     grammar_errors: list[GrammarError]
     vocabulary_upgrades: list[VocabularyUpgrade]
     preferred_language: str
+    improved_answer: str
     feedback: list[str]
     strengths: list[str]
 

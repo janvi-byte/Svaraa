@@ -83,11 +83,18 @@ export type RandomTopicResponse = {
 };
 
 export function getRandomTopic(
-  excludeTopicId?: string
+  excludeTopicId?: string,
+  adaptive = false
 ): Promise<RandomTopicResponse> {
-  const query = excludeTopicId
-    ? `?excludeTopicId=${encodeURIComponent(excludeTopicId)}`
-    : '';
+  const params = new URLSearchParams();
+  if (excludeTopicId) {
+    params.set('excludeTopicId', excludeTopicId);
+  }
+  if (adaptive) {
+    params.set('adaptive', 'true');
+  }
+
+  const query = params.toString() ? `?${params.toString()}` : '';
 
   return apiGet<RandomTopicResponse>(
     `/speaking/topics/random${query}`
@@ -141,6 +148,7 @@ export type SavedAnalysis = SpeakingAnalysis & {
   grammarErrors?: GrammarError[];
   vocabularyUpgrades?: VocabularyUpgrade[];
   preferredLanguage?: string;
+  improvedAnswer?: string;
   status?: 'pending' | 'complete';
   createdAt?: string;
   updatedAt?: string;
