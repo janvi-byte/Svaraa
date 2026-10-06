@@ -7,6 +7,7 @@ const speakingSessionSchema = new mongoose.Schema(
     transcript: { type: String, trim: true, maxlength: 10000 },
     durationSeconds: { type: Number, min: 0, default: 0 },
     status: { type: String, enum: ['started', 'submitted', 'analyzed'], default: 'started' },
+    retryGroup: { type: String, trim: true, index: true },
   },
   { timestamps: true }
 );

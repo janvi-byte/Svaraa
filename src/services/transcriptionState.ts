@@ -3,12 +3,20 @@ import {
   transcribeAudio,
   type SpeakingAnalysis,
   type SpeakingSession,
+  type SpeakingTopic,
   type TranscriptionResponse,
 } from './speakingService';
+
+export type RetryContext = {
+  topic: SpeakingTopic;
+  retryGroup: string;
+};
 
 let latestTranscription: TranscriptionResponse | null = null;
 let latestAnalysis: SpeakingAnalysis | null = null;
 let latestSession: SpeakingSession | null = null;
+let latestTopic: SpeakingTopic | null = null;
+let retryContext: RetryContext | null = null;
 
 export function getLatestTranscription(): TranscriptionResponse | null {
   return latestTranscription;
@@ -24,6 +32,26 @@ export function getLatestSession(): SpeakingSession | null {
 
 export function setLatestSession(session: SpeakingSession): void {
   latestSession = session;
+}
+
+export function getLatestTopic(): SpeakingTopic | null {
+  return latestTopic;
+}
+
+export function setLatestTopic(topic: SpeakingTopic): void {
+  latestTopic = topic;
+}
+
+export function getRetryContext(): RetryContext | null {
+  return retryContext;
+}
+
+export function setRetryContext(context: RetryContext): void {
+  retryContext = context;
+}
+
+export function clearRetryContext(): void {
+  retryContext = null;
 }
 
 export function clearLatestTranscription(): void {
@@ -69,16 +97,12 @@ export async function submitRecording(
 
   latestSession = result.session;
 
-  latestAnalysis = {
+  const analysis: SpeakingAnalysis = {
     overall: result.analysis.overall ?? 0,
     fluency: result.analysis.fluency ?? 0,
     vocabulary: result.analysis.vocabulary ?? 0,
     grammar: result.analysis.grammar ?? 0,
     pacing: result.analysis.pacing ?? 0,
-    improved_answer:
-      result.analysis.improved_answer ??
-      result.analysis.improvedAnswer ??
-      '',
     filler_count:
       result.analysis.filler_count ??
       result.analysis.fillerCount ??
@@ -107,13 +131,19 @@ export async function submitRecording(
       result.analysis.preferred_language ??
       result.analysis.preferredLanguage ??
       preferredLanguage,
+    improved_answer:
+      result.analysis.improved_answer ??
+      result.analysis.improvedAnswer ??
+      transcription.transcript,
     feedback: result.analysis.feedback ?? [],
     strengths: result.analysis.strengths ?? [],
   };
 
+  latestAnalysis = analysis;
+
   return {
     transcription,
     session: result.session,
-    analysis: latestAnalysis,
+    analysis,
   };
 }

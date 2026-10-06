@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { FormEvent, ReactNode } from 'react';
 
@@ -20,6 +20,8 @@ import {
 
   Menu,
 
+  Minus,
+
   Play,
 
   ShieldCheck,
@@ -29,6 +31,10 @@ import {
   Target,
 
   Trophy,
+
+  TrendingDown,
+
+  TrendingUp,
 
   UserRound,
 
@@ -76,20 +82,36 @@ import {
 
   clearLatestTranscription,
 
+  clearRetryContext,
+
   getLatestAnalysis,
+
+  getLatestSession,
 
   getLatestTranscription,
 
+  getLatestTopic,
+
+  getRetryContext,
+
   setLatestSession,
+
+  setLatestTopic,
+
+  setRetryContext,
 
   submitRecording,
 
 } from '@/services/transcriptionState';
 
 import {
-  getRandomTopic,
+  compareRetryAttempts,
+  getNextChallenge,
   getSpeakingHistory,
+  getSpeakingProfile,
   startSpeakingSession,
+  type AttemptComparisonResponse,
+  type SpeakingProfile,
   type SpeakingSession,
   type SpeakingTopic,
 } from '@/services/speakingService';
@@ -946,6 +968,9 @@ function PracticePage({ navigate }: { navigate: Navigate }) {
   const [submitting, setSubmitting] = useState(false);
   const [loadingTopic, setLoadingTopic] = useState(false);
   const [error, setError] = useState('');
+  const [isRetryAttempt, setIsRetryAttempt] = useState(false);
+  const [challengeMessage, setChallengeMessage] = useState('');
+  const startedRef = useRef(false);
 
   async function loadPracticeTopic(excludeTopicId?: string) {
     setError('');
@@ -961,16 +986,43 @@ function PracticePage({ navigate }: { navigate: Navigate }) {
       clearLatestTranscription();
       clearLatestAnalysis();
 
-      const { topic: randomTopic } =
-        await getRandomTopic(excludeTopicId, true);
+      const retryContext = excludeTopicId
+        ? null
+        : getRetryContext();
+
+      if (retryContext) {
+        clearRetryContext();
+
+        const { session } = await startSpeakingSession(
+          retryContext.topic._id,
+          retryContext.retryGroup
+        );
+
+        setTopic(retryContext.topic);
+        setLatestTopic(retryContext.topic);
+        setLatestSession(session);
+        setAudioBlob(null);
+        setDuration(0);
+        setIsRetryAttempt(true);
+        return;
+      }
+
+      const challenge = await getNextChallenge(excludeTopicId);
 
       const { session } =
-        await startSpeakingSession(randomTopic._id);
+        await startSpeakingSession(challenge.topic._id);
 
-      setTopic(randomTopic);
+      setTopic(challenge.topic);
+      setLatestTopic(challenge.topic);
       setLatestSession(session);
       setAudioBlob(null);
       setDuration(0);
+      setIsRetryAttempt(false);
+      setChallengeMessage(
+        challenge.personalized && challenge.focus
+          ? challenge.focus.message
+          : ''
+      );
     } catch (requestError) {
       setError(
         requestError instanceof ApiError
@@ -984,6 +1036,11 @@ function PracticePage({ navigate }: { navigate: Navigate }) {
   }
 
   useEffect(() => {
+    if (startedRef.current) {
+      return;
+    }
+
+    startedRef.current = true;
     loadPracticeTopic();
   }, []);
 
@@ -1078,7 +1135,7 @@ function PracticePage({ navigate }: { navigate: Navigate }) {
         <section className="prompt-card">
           <div className="prompt-top">
             <span className="pill light">
-              Today's prompt
+              {isRetryAttempt ? 'Retry attempt' : "Today's prompt"}
             </span>
 
             <span className="difficulty">
@@ -1100,6 +1157,13 @@ function PracticePage({ navigate }: { navigate: Navigate }) {
             <span>{topic?.category || 'General'}</span>
             <span>{durationLabel}</span>
           </div>
+
+          {challengeMessage && (
+            <div className="prompt-note">
+              <span className="eyebrow">Your next challenge</span>
+              <p>{challengeMessage}</p>
+            </div>
+          )}
 
           <button
             className="text-link"
@@ -1172,6 +1236,32 @@ function PracticePage({ navigate }: { navigate: Navigate }) {
 function ResultsPage({ navigate }: { navigate: Navigate }) {
   const transcription = getLatestTranscription();
   const analysis = getLatestAnalysis();
+  const [attemptComparison, setAttemptComparison] =
+    useState<AttemptComparisonResponse | null>(null);
+
+  const retryGroup = getLatestSession()?.retryGroup;
+
+  useEffect(() => {
+    if (!retryGroup) {
+      return;
+    }
+
+    let mounted = true;
+
+    compareRetryAttempts(retryGroup)
+      .then((response) => {
+        if (mounted) {
+          setAttemptComparison(response);
+        }
+      })
+      .catch(() => {
+        // Attempt comparison is optional; the scores above still apply.
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [retryGroup]);
 
   useEffect(() => {
     return () => {
@@ -1223,6 +1313,29 @@ function ResultsPage({ navigate }: { navigate: Navigate }) {
         : analysis.overall >= 50
           ? 'Needs practice'
           : 'Focus on the basics';
+
+  const handleTryAgain = () => {
+    const topic = getLatestTopic();
+    const session = getLatestSession();
+
+    if (topic && session?.retryGroup) {
+      setRetryContext({
+        topic,
+        retryGroup: session.retryGroup,
+      });
+    }
+
+    navigate('/practice');
+  };
+
+  const comparisonMetrics = attemptComparison?.comparison ?? [];
+  const firstAttempt = attemptComparison?.firstAttempt;
+  const latestAttempt = attemptComparison?.latestAttempt;
+  const overallTrend = attemptComparison?.overallTrend;
+  const showComparison =
+    comparisonMetrics.length > 0 &&
+    firstAttempt != null &&
+    latestAttempt != null;
 
   return (
     <PageShell
@@ -1311,7 +1424,7 @@ function ResultsPage({ navigate }: { navigate: Navigate }) {
 
             <button
               className="button outline"
-              onClick={() => navigate('/practice')}
+              onClick={handleTryAgain}
             >
               Try again <ArrowRight size={15} />
             </button>
@@ -1331,6 +1444,75 @@ function ResultsPage({ navigate }: { navigate: Navigate }) {
             </div>
           </div>
         </section>
+
+        {showComparison && firstAttempt && latestAttempt && (
+          <section className="feedback-section">
+            <div className="section-heading">
+              <div>
+                <span className="eyebrow">Attempt comparison</span>
+                <h2>
+                  Attempt {firstAttempt.attemptNumber} vs attempt{' '}
+                  {latestAttempt.attemptNumber}
+                </h2>
+              </div>
+
+              <span className="pill light">
+                {overallTrend === 'improved' && <TrendingUp size={13} />}
+                {overallTrend === 'declined' && <TrendingDown size={13} />}
+                {overallTrend === 'unchanged' && <Minus size={13} />}
+                {overallTrend === 'improved'
+                  ? 'Overall improved'
+                  : overallTrend === 'declined'
+                    ? 'Overall declined'
+                    : 'Overall unchanged'}
+              </span>
+            </div>
+
+            <div className="score-list">
+              {comparisonMetrics.map((metric, index) => (
+                <div
+                  className={`score-card ${
+                    ['teal', 'coral', 'yellow', 'blue'][index % 4]
+                  }`}
+                  key={metric.key}
+                >
+                  <div className="score-card-top">
+                    <span className="score-label">{metric.label}</span>
+
+                    {metric.trend === 'improved' && <TrendingUp size={13} />}
+                    {metric.trend === 'declined' && (
+                      <TrendingDown size={13} />
+                    )}
+                    {metric.trend === 'unchanged' && <Minus size={13} />}
+                  </div>
+
+                  <strong>
+                    {metric.first} <ArrowRight size={13} /> {metric.latest}
+                  </strong>
+
+                  <span
+                    className="score-change"
+                    style={
+                      metric.trend === 'declined'
+                        ? { color: 'var(--coral)' }
+                        : metric.trend === 'unchanged'
+                          ? { color: 'var(--muted)' }
+                          : undefined
+                    }
+                  >
+                    {metric.delta > 0 ? `+${metric.delta}` : metric.delta}
+                    {' · '}
+                    {metric.trend === 'improved'
+                      ? 'Improved'
+                      : metric.trend === 'declined'
+                        ? 'Declined'
+                        : 'Unchanged'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="feedback-section">
           <div className="section-heading">
@@ -2677,9 +2859,45 @@ function AssessmentPage({ navigate }: { navigate: Navigate }) {
 
 }
 
+function displaySkill(skill: string, fallback = '—') {
+  if (!skill) {
+    return fallback;
+  }
+
+  return `${skill.charAt(0).toUpperCase()}${skill.slice(1)}`;
+}
+
 function ProfilePage({ navigate }: { navigate: Navigate }) {
 
   const { logout, user } = useAuth();
+  const [speakingProfile, setSpeakingProfile] =
+    useState<SpeakingProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    getSpeakingProfile()
+      .then((response) => {
+        if (mounted) {
+          setSpeakingProfile(response.profile);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setSpeakingProfile(null);
+        }
+      })
+      .finally(() => {
+        if (mounted) {
+          setProfileLoading(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
 
@@ -2818,6 +3036,214 @@ function ProfilePage({ navigate }: { navigate: Navigate }) {
             Save changes <Check size={16} />
 
           </button>
+
+        </section>
+
+        <section className="feedback-section">
+
+          <div className="section-heading">
+
+            <div>
+
+              <span className="eyebrow">Speaking profile</span>
+
+              <h2>Your skills at a glance</h2>
+
+            </div>
+
+            {speakingProfile && speakingProfile.sessionsAnalyzed > 0 && (
+
+              <span className="pill light">
+
+                {speakingProfile.difficulty}
+
+              </span>
+
+            )}
+
+          </div>
+
+          {profileLoading ? (
+
+            <p
+
+              style={{ color: 'var(--muted)', fontSize: '12px' }}
+
+            >
+
+              Loading your speaking profile…
+
+            </p>
+
+          ) : !speakingProfile ||
+
+            speakingProfile.sessionsAnalyzed === 0 ? (
+
+            <p
+
+              style={{ color: 'var(--muted)', fontSize: '12px' }}
+
+            >
+
+              Complete your first speaking practice to build your
+
+              speaking profile. Your scores, strongest and weakest
+
+              skills, and progress will appear here.
+
+            </p>
+
+          ) : (
+
+            <div className="score-list">
+
+              <ScoreCard
+
+                label="Overall performance"
+
+                value={`${speakingProfile.averageOverall}/100`}
+
+                change=""
+
+                tone="teal"
+
+              />
+
+              <ScoreCard
+
+                label="Sessions analyzed"
+
+                value={String(speakingProfile.sessionsAnalyzed)}
+
+                change=""
+
+                tone="blue"
+
+              />
+
+              <ScoreCard
+
+                label="Current difficulty"
+
+                value={speakingProfile.difficulty}
+
+                change=""
+
+                tone="yellow"
+
+              />
+
+              <ScoreCard
+
+                label="Strongest skill"
+
+                value={displaySkill(speakingProfile.strongestSkill)}
+
+                change=""
+
+                tone="teal"
+
+              />
+
+              <ScoreCard
+
+                label="Weakest skill"
+
+                value={displaySkill(speakingProfile.weakestSkill)}
+
+                change=""
+
+                tone="coral"
+
+              />
+
+              <ScoreCard
+
+                label="Improving skill"
+
+                value={displaySkill(
+
+                  speakingProfile.improvingSkill,
+
+                  'Not enough data yet'
+
+                )}
+
+                change=""
+
+                tone="blue"
+
+              />
+
+              <ScoreCard
+
+                label="Declining skill"
+
+                value={displaySkill(
+
+                  speakingProfile.decliningSkill,
+
+                  'Not enough data yet'
+
+                )}
+
+                change=""
+
+                tone="yellow"
+
+              />
+
+              <ScoreCard
+
+                label="Grammar"
+
+                value={String(speakingProfile.averageGrammar)}
+
+                change=""
+
+                tone="yellow"
+
+              />
+
+              <ScoreCard
+
+                label="Fluency"
+
+                value={String(speakingProfile.averageFluency)}
+
+                change=""
+
+                tone="teal"
+
+              />
+
+              <ScoreCard
+
+                label="Vocabulary"
+
+                value={String(speakingProfile.averageVocabulary)}
+
+                change=""
+
+                tone="coral"
+
+              />
+
+              <ScoreCard
+
+                label="Pacing"
+
+                value={String(speakingProfile.averagePacing)}
+
+                change=""
+
+                tone="blue"
+
+              />
+
+            </div>
+
+          )}
 
         </section>
 

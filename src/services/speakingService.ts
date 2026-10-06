@@ -101,6 +101,63 @@ export function getRandomTopic(
   );
 }
 
+export type NextChallengeFocus = {
+  skill: string;
+  averageScore: number;
+  overallAverage: number;
+  difficulty: string;
+  message: string;
+};
+
+export type NextChallengeResponse = {
+  topic: SpeakingTopic;
+  personalized: boolean;
+  focus?: NextChallengeFocus;
+  analyzedSessionCount?: number;
+};
+
+export function getNextChallenge(
+  excludeTopicId?: string
+): Promise<NextChallengeResponse> {
+  const query = excludeTopicId
+    ? `?excludeTopicId=${encodeURIComponent(excludeTopicId)}`
+    : '';
+
+  return apiGet<NextChallengeResponse>(
+    `/speaking/topics/next${query}`
+  );
+}
+
+export type SpeakingProfile = {
+  _id?: string;
+  user?: string;
+  sessionsAnalyzed: number;
+  averageOverall: number;
+  averageGrammar: number;
+  averageFluency: number;
+  averageVocabulary: number;
+  averagePacing: number;
+  averageWordsPerMinute: number;
+  averageFillerCount: number;
+  averageVocabularyDiversity: number;
+  averageRepeatedPhraseCount: number;
+  strongestSkill: string;
+  weakestSkill: string;
+  improvingSkill: string;
+  decliningSkill: string;
+  difficulty: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export function getSpeakingProfile(): Promise<{
+  profile: SpeakingProfile;
+}> {
+  return apiGet<{ profile: SpeakingProfile }>(
+    '/speaking/profile'
+  );
+}
+
 export type SpeakingAnalysisSummary = {
   overall: number;
   fluency: number;
@@ -121,6 +178,7 @@ export type SpeakingSession = {
   transcript?: string;
   durationSeconds: number;
   status: 'started' | 'submitted' | 'analyzed';
+  retryGroup?: string;
   analysis?: SpeakingAnalysisSummary | null;
   createdAt?: string;
   updatedAt?: string;
@@ -131,10 +189,12 @@ export type StartSpeakingSessionResponse = {
 };
 
 export function startSpeakingSession(
-  topicId: string
+  topicId: string,
+  retryGroup?: string
 ): Promise<StartSpeakingSessionResponse> {
   return apiPost<StartSpeakingSessionResponse>('/speaking/start', {
     topicId,
+    ...(retryGroup ? { retryGroup } : {}),
   });
 }
 
@@ -182,4 +242,53 @@ export type SpeakingHistoryResponse = {
 
 export function getSpeakingHistory(): Promise<SpeakingHistoryResponse> {
   return apiGet<SpeakingHistoryResponse>('/speaking/history');
+}
+
+export type AttemptTrend = 'improved' | 'declined' | 'unchanged';
+
+export type AttemptMetricComparison = {
+  key: string;
+  label: string;
+  first: number;
+  latest: number;
+  delta: number;
+  trend: AttemptTrend;
+};
+
+export type RetryAttemptsResponse = {
+  retryGroup: string;
+  attemptCount: number;
+  attempts: SpeakingSession[];
+};
+
+export type AttemptSummary = {
+  sessionId: string;
+  attemptNumber: number;
+  createdAt?: string;
+};
+
+export type AttemptComparisonResponse = {
+  retryGroup: string;
+  attemptCount: number;
+  analyzedAttemptCount: number;
+  firstAttempt: AttemptSummary | null;
+  latestAttempt: AttemptSummary | null;
+  comparison: AttemptMetricComparison[] | null;
+  overallTrend: AttemptTrend | null;
+};
+
+export function getRetryAttempts(
+  retryGroup: string
+): Promise<RetryAttemptsResponse> {
+  return apiGet<RetryAttemptsResponse>(
+    `/speaking/attempts/${encodeURIComponent(retryGroup)}`
+  );
+}
+
+export function compareRetryAttempts(
+  retryGroup: string
+): Promise<AttemptComparisonResponse> {
+  return apiGet<AttemptComparisonResponse>(
+    `/speaking/attempts/${encodeURIComponent(retryGroup)}/compare`
+  );
 }

@@ -102,6 +102,7 @@ const analysisResultSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: '',
+      maxlength: 10000,
     },
     feedback: {
       type: [String],

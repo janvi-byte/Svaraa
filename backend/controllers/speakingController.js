@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import SpeakingSession from '../models/SpeakingSession.js';
 import AnalysisResult from '../models/AnalysisResult.js';
 import { getRandomTopic } from '../services/topicService.js';
@@ -7,6 +8,14 @@ import { calculateOrUpdateProfile } from '../services/profileService.js';
 import { updateVocabularyProfile } from '../services/vocabularyService.js';
 import { addAttemptToRetryGroup } from './retryController.js';
 import { generateNotifications } from './notificationController.js';
+import {
+  getPersonalizedTopic,
+} from '../services/topicService.js';
+import {
+  buildComparison,
+  loadAttemptGroup,
+} from '../services/attemptService.js';
+import { getSpeakingProfile } from '../services/profileService.js';
 import Topic from '../models/Topic.js';
 import SpeakingProfile from '../models/SpeakingProfile.js';
 
@@ -36,9 +45,42 @@ export async function randomTopic(req, res) {
   }
 }
 
+export async function nextChallengeTopic(req, res) {
+  try {
+    const { excludeTopicId } = req.query;
+
+    const result = await getPersonalizedTopic(
+      req.user._id,
+      excludeTopicId || null
+    );
+
+    return res.json(result);
+  } catch (error) {
+    console.error('Next challenge error:', error);
+
+    return res.status(500).json({
+      message: 'Failed to load your next challenge.',
+    });
+  }
+}
+
+export async function speakingProfile(req, res) {
+  try {
+    const profile = await getSpeakingProfile(req.user._id);
+
+    return res.json({ profile });
+  } catch (error) {
+    console.error('Speaking profile error:', error);
+
+    return res.status(500).json({
+      message: 'Failed to load your speaking profile.',
+    });
+  }
+}
+
 export async function startSpeakingSession(req, res) {
   try {
-    const { topicId } = req.body;
+    const { topicId, retryGroup } = req.body;
 
     if (!topicId) {
       return res.status(400).json({
@@ -54,10 +96,44 @@ export async function startSpeakingSession(req, res) {
       });
     }
 
+    let group = randomUUID();
+
+    if (
+      retryGroup !== undefined &&
+      retryGroup !== null &&
+      retryGroup !== ''
+    ) {
+      if (typeof retryGroup !== 'string' || !retryGroup.trim()) {
+        return res.status(400).json({
+          message: 'retryGroup must reference a previous attempt.',
+        });
+      }
+
+      group = retryGroup.trim();
+
+      const existingAttempt = await SpeakingSession.findOne({
+        retryGroup: group,
+        user: req.user._id,
+      });
+
+      if (!existingAttempt) {
+        return res.status(400).json({
+          message: 'The retry session was not found.',
+        });
+      }
+
+      if (String(existingAttempt.topic) !== String(topic._id)) {
+        return res.status(400).json({
+          message: 'Retry attempts must use the same speaking topic.',
+        });
+      }
+    }
+
     const session = await SpeakingSession.create({
       user: req.user._id,
       topic: topic._id,
       status: 'started',
+      retryGroup: group,
     });
 
     return res.status(201).json({ session });
@@ -240,6 +316,106 @@ export async function analyzeSpeaking(req, res) {
 
     return res.status(500).json({
       message: error.message || 'Failed to analyze transcript.',
+    });
+  }
+}
+
+export async function getRetryAttempts(req, res) {
+  try {
+    const { retryGroup } = req.params;
+
+    const group = await loadAttemptGroup(retryGroup, req.user._id);
+
+    if (!group) {
+      return res.status(404).json({
+        message: 'No attempts were found for this retry session.',
+      });
+    }
+
+    const attempts = group.sessions.map((session) => ({
+      ...session,
+      analysis: group.analysisMap.get(String(session._id)) || null,
+    }));
+
+    return res.json({
+      retryGroup,
+      attemptCount: attempts.length,
+      attempts,
+    });
+  } catch (error) {
+    console.error('Retry attempts error:', error);
+
+    return res.status(500).json({
+      message: 'Failed to load retry attempts.',
+    });
+  }
+}
+
+export async function compareRetryAttempts(req, res) {
+  try {
+    const { retryGroup } = req.params;
+
+    const group = await loadAttemptGroup(retryGroup, req.user._id);
+
+    if (!group) {
+      return res.status(404).json({
+        message: 'No attempts were found for this retry session.',
+      });
+    }
+
+    const analyzedSessions = group.sessions.filter((session) => {
+      const analysis = group.analysisMap.get(String(session._id));
+      return analysis && analysis.status === 'complete';
+    });
+
+    const attemptNumber = (session) =>
+      group.sessions.findIndex(
+        (item) => String(item._id) === String(session._id)
+      ) + 1;
+
+    if (analyzedSessions.length < 2) {
+      return res.json({
+        retryGroup,
+        attemptCount: group.sessions.length,
+        analyzedAttemptCount: analyzedSessions.length,
+        firstAttempt: null,
+        latestAttempt: null,
+        comparison: null,
+        overallTrend: null,
+      });
+    }
+
+    const firstSession = analyzedSessions[0];
+    const latestSession =
+      analyzedSessions[analyzedSessions.length - 1];
+
+    const result = buildComparison(
+      group.analysisMap.get(String(firstSession._id)),
+      group.analysisMap.get(String(latestSession._id))
+    );
+
+    return res.json({
+      retryGroup,
+      attemptCount: group.sessions.length,
+      analyzedAttemptCount: analyzedSessions.length,
+      firstAttempt: {
+        sessionId: String(firstSession._id),
+        attemptNumber: attemptNumber(firstSession),
+        createdAt: firstSession.createdAt,
+      },
+      latestAttempt: {
+        sessionId: String(latestSession._id),
+        attemptNumber: attemptNumber(latestSession),
+        createdAt: latestSession.createdAt,
+      },
+      comparison: result.metrics,
+      overallTrend: result.overallTrend,
+    });
+  } catch (error) {
+    console.error('Retry comparison error:', error);
+
+    return res.status(500).json({
+      message: 'Failed to compare retry attempts.',
     });
   }
 }
