@@ -14,7 +14,7 @@ export async function getSpeakingProfile(req, res, next) {
     const user = await User.findById(req.user._id).select('preferredLanguage practiceGoal preferredTutor difficulty').lean();
 
     const overusedWords = getOverusedWords(vocabProfile);
-    const nextChallenge = generateNextChallengeMessage(profile);
+    const nextChallenge = await generateNextChallengeMessage(profile);
 
     return res.json({
       profile: profile || {

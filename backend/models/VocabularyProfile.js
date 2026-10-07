@@ -19,6 +19,13 @@ const vocabularyProfileSchema = new mongoose.Schema(
     },
     totalWordsUsed: { type: Number, default: 0, min: 0 },
     words: [vocabularyEntrySchema],
+    processedSessionIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'SpeakingSession',
+        select: false,
+      },
+    ],
     targetWords: [
       {
         word: { type: String, required: true, lowercase: true, trim: true },

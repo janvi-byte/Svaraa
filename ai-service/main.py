@@ -6,6 +6,10 @@ import tempfile
 import subprocess
 import wave
 import audioop
+import time
+
+from google import genai
+from google.genai import types
 
 from analyzer import analyze_text
 
@@ -17,6 +21,8 @@ app = FastAPI(
 )
 
 WHISPER_MODEL_NAME = os.getenv("WHISPER_MODEL", "tiny")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 whisper_model = None
 
 
@@ -43,6 +49,24 @@ class VocabularyUpgrade(BaseModel):
     examples: list[str]
 
 
+class GeminiGrammarError(BaseModel):
+    original: str
+    correction: str
+    explanation: str
+
+
+class GeminiVocabularyUpgrade(BaseModel):
+    original: str
+    suggestion: str
+    explanation: str
+
+
+class GeminiCoachingResponse(BaseModel):
+    improved_answer: str
+    grammar_errors: list[GeminiGrammarError]
+    vocabulary_upgrades: list[GeminiVocabularyUpgrade]
+
+
 class AnalyzeResponse(BaseModel):
     overall: int
     fluency: int
@@ -59,6 +83,8 @@ class AnalyzeResponse(BaseModel):
     improved_answer: str
     feedback: list[str]
     strengths: list[str]
+    contextual_coaching_available: bool = True
+    contextual_coaching_error: str | None = None
 
 
 def get_whisper_model():
@@ -129,6 +155,113 @@ def has_confident_speech(result):
     return len(speech_segments) > 0
 
 
+def generate_contextual_coaching(
+    transcript,
+    preferred_language,
+):
+    if not GEMINI_API_KEY:
+        return None, "Gemini is not configured."
+
+    prompt = f"""
+You are a careful English speaking coach. Review the learner's complete
+transcript and return contextual coaching as structured data.
+
+Preserve the learner's meaning, ideas, opinions, and approximate length.
+Correct meaningful grammar and usage problems, improve unnatural phrasing
+only when useful, and make the answer sound natural and fluent in
+conversational English. Do not invent facts, examples, opinions, or
+experiences. Do not make an already-natural sentence more sophisticated.
+Treat possible speech-to-text mistakes as uncertain unless the surrounding
+context makes the intended meaning reasonably clear; never present an
+uncertain ASR interpretation as a confirmed learner mistake.
+
+Return only:
+- improved_answer: a complete meaning-preserving rewrite
+- grammar_errors: meaningful grammar or usage issues actually present
+- vocabulary_upgrades: contextual suggestions only when they genuinely
+  improve the sentence; do not replace words merely with harder synonyms
+
+Preferred language: {preferred_language}
+Learner transcript:
+{transcript}
+""".strip()
+
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        response = None
+        for attempt in range(2):
+            try:
+                response = client.models.generate_content(
+                    model=GEMINI_MODEL,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=GeminiCoachingResponse,
+                    ),
+                )
+                break
+            except Exception as error:
+                if (
+                    attempt == 0
+                    and (
+                        getattr(error, "code", None) == 503
+                        or getattr(error, "status", None) == "UNAVAILABLE"
+                    )
+                ):
+                    time.sleep(2)
+                    continue
+                raise
+
+        coaching = response.parsed
+        if not isinstance(coaching, GeminiCoachingResponse):
+            return None, "Gemini returned an invalid coaching response."
+
+        return coaching, None
+    except Exception as error:
+        print(
+            f"Gemini contextual coaching unavailable: {type(error).__name__}"
+        )
+        return None, "Gemini contextual coaching is unavailable."
+
+
+def apply_contextual_coaching(result, transcript, preferred_language):
+    coaching, error = generate_contextual_coaching(
+        transcript,
+        preferred_language,
+    )
+
+    if coaching is None:
+        result["contextual_coaching_available"] = False
+        result["contextual_coaching_error"] = error
+        return result
+
+    result["improved_answer"] = coaching.improved_answer.strip()
+    result["grammar_errors"] = [
+        {
+            "original": item.original,
+            "correction": item.correction,
+            "explanation": item.explanation,
+            "category": "Contextual usage",
+        }
+        for item in coaching.grammar_errors
+    ]
+    result["vocabulary_upgrades"] = [
+        {
+            "used_word": item.original,
+            "suggested_word": item.suggestion,
+            "meaning": item.explanation,
+            "preferred_language": preferred_language,
+            "translation": item.suggestion,
+            "reason": item.explanation,
+            "examples": [],
+        }
+        for item in coaching.vocabulary_upgrades
+    ]
+    result["contextual_coaching_available"] = True
+    result["contextual_coaching_error"] = None
+    return result
+
+
 @app.get("/health")
 def health():
     return {
@@ -147,7 +280,11 @@ def analyze(request: AnalyzeRequest):
             preferred_language=request.preferred_language,
         )
 
-        return result
+        return apply_contextual_coaching(
+            result,
+            request.transcript,
+            request.preferred_language,
+        )
 
     except Exception as error:
         raise HTTPException(
@@ -271,7 +408,20 @@ async def transcribe(
                 ),
             )
 
-        return {
+        segments = [
+            {
+                "start": float(segment["start"]),
+                "end": float(segment["end"]),
+                "text": segment.get("text", "").strip(),
+            }
+            for segment in result.get("segments", [])
+            if isinstance(segment, dict)
+            and isinstance(segment.get("start"), (int, float))
+            and isinstance(segment.get("end"), (int, float))
+            and segment.get("text", "").strip()
+        ]
+
+        response = {
             "transcript": transcript,
             "language": result.get(
                 "language",
@@ -279,6 +429,11 @@ async def transcribe(
             ),
             "duration_seconds": duration_seconds,
         }
+
+        if segments:
+            response["segments"] = segments
+
+        return response
 
     except HTTPException:
         raise

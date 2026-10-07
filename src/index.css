@@ -247,3 +247,141 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Shared interaction states */
+:where(button, a, input, select):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--coral) 72%, white);
+  outline-offset: 3px;
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+input,
+select {
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+input:hover:not(:disabled),
+select:hover:not(:disabled) {
+  border-color: #aabbb5;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--teal-dark);
+  box-shadow: 0 0 0 3px #287c7220;
+  outline: 0;
+}
+
+input:disabled,
+select:disabled {
+  background: #f1f3ef;
+  color: #84908c;
+}
+
+input[aria-invalid='true'] {
+  border-color: #c75c4f;
+  box-shadow: 0 0 0 3px #c75c4f18;
+}
+
+.input-wrap {
+  position: relative;
+}
+
+.input-wrap input {
+  padding-right: 44px;
+}
+
+.input-action {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  transform: translateY(-50%);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.input-action:hover {
+  background: #ecf0eb;
+  color: var(--ink);
+}
+
+.input-action:active:not(:disabled) {
+  transform: translateY(-50%);
+}
+
+.page:focus {
+  outline: 0;
+}
+
+.sidebar,
+.scrim,
+.notification-dropdown {
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+.notification-dropdown {
+  transform-origin: top right;
+}
+
+.auth-card {
+  animation: auth-enter .22s ease-out both;
+}
+
+@keyframes auth-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 600px) {
+  .auth-page {
+    padding: 76px 16px 48px;
+    align-items: start;
+  }
+
+  .auth-brand {
+    top: 22px;
+    left: 20px;
+  }
+
+  .auth-card {
+    width: min(100%, 430px);
+    padding: 30px 22px;
+  }
+
+  .auth-heading h1 {
+    font-size: clamp(32px, 11vw, 38px);
+  }
+
+  .auth-form {
+    gap: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}

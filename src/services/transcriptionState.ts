@@ -137,6 +137,7 @@ export async function submitRecording(
       transcription.transcript,
     feedback: result.analysis.feedback ?? [],
     strengths: result.analysis.strengths ?? [],
+    vocabularySummary: result.vocabulary,
   };
 
   latestAnalysis = analysis;

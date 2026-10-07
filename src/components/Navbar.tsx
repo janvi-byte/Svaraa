@@ -164,7 +164,9 @@ export function Navbar({ onMenu, onNavigate }: NavbarProps) {
           <button
             className="icon-button"
             aria-label="Notifications"
-            onClick={() => setShowNotifications((prev) => !prev)}
+              aria-expanded={showNotifications}
+              aria-haspopup="true"
+              onClick={() => setShowNotifications((prev) => !prev)}
           >
             <Bell size={19} />
             {unreadCount > 0 && (
@@ -173,7 +175,7 @@ export function Navbar({ onMenu, onNavigate }: NavbarProps) {
           </button>
 
           {showNotifications && (
-            <div className="notification-dropdown">
+            <div className="notification-dropdown" role="dialog" aria-label="Notifications">
               <div className="notification-header">
                 <strong>Notifications</strong>
                 <div className="notification-header-actions">

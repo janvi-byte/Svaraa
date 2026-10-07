@@ -11,6 +11,8 @@ import {
   ChevronRight,
 
   CircleHelp,
+  Eye,
+  EyeOff,
 
   Globe2,
 
@@ -106,19 +108,36 @@ import {
 
 import {
   compareRetryAttempts,
+  completePresentation,
+  alignReferenceAudio,
+  getPronunciationReferences,
   getNextChallenge,
+  getPresentationTopics,
+  getSpeakingAnalytics,
   getSpeakingHistory,
   getSpeakingProfile,
   startSpeakingSession,
+  startPresentation,
+  transcribeAudio,
   type AttemptComparisonResponse,
+  type PronunciationReference,
+  type ReferenceAlignmentResponse,
+  type SpeakingAnalytics,
   type SpeakingProfile,
   type SpeakingSession,
   type SpeakingTopic,
 } from '@/services/speakingService';
 
 import {
+  completeDebate,
+  completeConversation,
+  completeRoleplay,
+  getTutors,
   getProfile,
+  sendMessage,
+  startConversation,
   type ProfileResponse,
+  type Conversation,
 } from '@/services/profileService';
 
 type Navigate = (path: string) => void;
@@ -1174,6 +1193,14 @@ function PracticePage({ navigate }: { navigate: Navigate }) {
             {loadingTopic ? 'Finding another topic…' : 'Try another topic'}
             {!loadingTopic && <ArrowRight size={14} />}
           </button>
+
+          <button
+            className="text-link"
+            onClick={() => navigate('/pronunciation-practice')}
+            style={{ marginTop: '12px' }}
+          >
+            Read aloud practice <ArrowRight size={14} />
+          </button>
         </section>
 
         <section className="record-section">
@@ -1233,6 +1260,207 @@ function PracticePage({ navigate }: { navigate: Navigate }) {
   );
 }
 
+function ReferencePracticePage({ navigate }: { navigate: Navigate }) {
+  const [references, setReferences] = useState<PronunciationReference[]>([]);
+  const [selectedId, setSelectedId] = useState('');
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [duration, setDuration] = useState(0);
+  const [result, setResult] =
+    useState<ReferenceAlignmentResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getPronunciationReferences()
+      .then(({ references: loadedReferences }) => {
+        setReferences(loadedReferences);
+        setSelectedId(loadedReferences[0]?.id || '');
+      })
+      .catch((requestError) => {
+        setError(
+          requestError instanceof ApiError
+            ? requestError.message
+            : 'Unable to load read aloud exercises.'
+        );
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const selectedReference = references.find(
+    (reference) => reference.id === selectedId
+  );
+
+  const handleSubmit = async () => {
+    if (!audioBlob || !selectedId) {
+      setError('Choose a sentence and record it before submitting.');
+      return;
+    }
+
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const alignment = await alignReferenceAudio(
+        audioBlob,
+        selectedId,
+        duration
+      );
+      setResult(alignment);
+    } catch (requestError) {
+      setError(
+        requestError instanceof ApiError
+          ? requestError.message
+          : 'Unable to align this recording. Please try again.'
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <PageShell
+        eyebrow="Read aloud practice"
+        title={<>Choose a sentence to<br /><em>practice.</em></>}
+        description="Loading reference sentences."
+        back={() => navigate('/practice')}
+      >
+        <section className="feedback-section">
+          <span className="eyebrow">Loading exercises…</span>
+        </section>
+      </PageShell>
+    );
+  }
+
+  return (
+    <PageShell
+      eyebrow="Read aloud practice"
+      title={<>Speak with<br /><em>the reference.</em></>}
+      description="Read one sentence naturally. The result shows how the audio aligned to the words Whisper recognized."
+      back={() => navigate('/practice')}
+    >
+      <div className="practice-layout">
+        <section className="prompt-card">
+          <div className="prompt-top">
+            <span className="pill light">Reference sentence</span>
+            <span className="difficulty">
+              <span />
+              {selectedReference?.difficulty || 'Easy'}
+            </span>
+          </div>
+
+          <select
+            value={selectedId}
+            onChange={(event) => {
+              setSelectedId(event.target.value);
+              setAudioBlob(null);
+              setResult(null);
+              setError('');
+            }}
+            aria-label="Choose a reference sentence"
+            style={{ width: '100%', marginBottom: '18px' }}
+          >
+            {references.map((reference) => (
+              <option key={reference.id} value={reference.id}>
+                {reference.text}
+              </option>
+            ))}
+          </select>
+
+          <h2>{selectedReference?.text || 'No reference sentence available.'}</h2>
+          <div className="prompt-tags">
+            <span>{selectedReference?.category || 'Practice'}</span>
+            <span>Read aloud</span>
+          </div>
+        </section>
+
+        <section className="record-section">
+          <div className="record-title">
+            <div>
+              <span className="eyebrow">Your turn</span>
+              <h2>Read the sentence naturally.</h2>
+            </div>
+            <span className="record-status">
+              <span className="live-dot" />
+              {audioBlob ? 'Recording ready' : 'Ready'}
+            </span>
+          </div>
+
+          <AudioRecorder
+            onRecordingComplete={(blob, seconds) => {
+              setAudioBlob(blob);
+              setDuration(seconds);
+              setResult(null);
+              setError('');
+            }}
+          />
+
+          {error && (
+            <p className="auth-error" role="alert" style={{ textAlign: 'center', marginTop: '16px' }}>
+              {error}
+            </p>
+          )}
+
+          <div className="record-footer">
+            <span>
+              <ShieldCheck size={15} />
+              Your recording stays private
+            </span>
+            <button
+              className="button primary"
+              onClick={handleSubmit}
+              disabled={submitting || !audioBlob || !selectedReference}
+            >
+              {submitting ? 'Aligning…' : 'Check timing'}
+              {!submitting && <ArrowRight size={16} />}
+            </button>
+          </div>
+        </section>
+      </div>
+
+      {result && (
+        <section className="feedback-section" style={{ marginTop: '24px' }}>
+          <span className="eyebrow">Alignment evidence</span>
+          <h2>What Whisper recognized</h2>
+          <p><strong>Reference:</strong> {result.reference.text}</p>
+          <p><strong>Recognized:</strong> {result.transcript}</p>
+          <p style={{ marginTop: '14px' }}>
+            These timings show how the audio aligned to the recognized words.
+            They are not a pronunciation accuracy score.
+          </p>
+
+          {result.comparison && (
+            <div className="prompt-tags" style={{ marginTop: '14px' }}>
+              <span>
+                {result.comparison.recognizedTextMatchesReference
+                  ? 'Recognized text matches'
+                  : 'Recognized text differs'}
+              </span>
+              {result.comparison.missingWords.length > 0 && (
+                <span>Missing: {result.comparison.missingWords.join(', ')}</span>
+              )}
+              {result.comparison.extraWords.length > 0 && (
+                <span>Extra: {result.comparison.extraWords.join(', ')}</span>
+              )}
+            </div>
+          )}
+
+          {result.words && result.words.length > 0 && (
+            <div className="prompt-tags" style={{ marginTop: '14px' }}>
+              {result.words.map((word, index) => (
+                <span key={`${word.word}-${index}`}>
+                  {word.word} {word.start.toFixed(2)}–{word.end.toFixed(2)}s
+                </span>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+    </PageShell>
+  );
+}
+
 function ResultsPage({ navigate }: { navigate: Navigate }) {
   const transcription = getLatestTranscription();
   const analysis = getLatestAnalysis();
@@ -1262,13 +1490,6 @@ function ResultsPage({ navigate }: { navigate: Navigate }) {
       mounted = false;
     };
   }, [retryGroup]);
-
-  useEffect(() => {
-    return () => {
-      clearLatestTranscription();
-      clearLatestAnalysis();
-    };
-  }, []);
 
   if (!transcription || !analysis) {
     return (
@@ -1620,6 +1841,73 @@ function ResultsPage({ navigate }: { navigate: Navigate }) {
           )}
         </section>
 
+        <section className="feedback-section">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">Vocabulary tracking</span>
+              <h2>Words from this session</h2>
+            </div>
+          </div>
+
+          {analysis.vocabularySummary ? (
+            <div className="vocabulary-list">
+              <div className="vocabulary-item">
+                <div>
+                  <span className="answer-label">New words</span>
+                  <strong>
+                    {analysis.vocabularySummary.newWords.length > 0
+                      ? analysis.vocabularySummary.newWords.join(', ')
+                      : 'No new words in this session.'}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="vocabulary-item">
+                <div>
+                  <span className="answer-label">Previously used words</span>
+                  <strong>
+                    {analysis.vocabularySummary.previouslyUsedWords.length > 0
+                      ? analysis.vocabularySummary.previouslyUsedWords.join(', ')
+                      : 'No previously used words.'}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="vocabulary-item">
+                <div>
+                  <span className="answer-label">Repeated content words</span>
+                  <strong>
+                    {analysis.vocabularySummary.repeatedWords.length > 0
+                      ? analysis.vocabularySummary.repeatedWords
+                          .map((item) => `${item.word} × ${item.count}`)
+                          .join(', ')
+                      : 'No repeated content words.'}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="vocabulary-item">
+                <div>
+                  <span className="answer-label">Content vocabulary diversity</span>
+                  <strong>
+                    {analysis.vocabularySummary.contentVocabularyDiversity}%
+                  </strong>
+                  <span className="vocabulary-meaning">
+                    {analysis.vocabularySummary.contentWordCount} content words
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <FeedbackCard
+              type="good"
+              title="Vocabulary tracking unavailable for this session."
+            >
+              Older sessions may not include the vocabulary tracking summary.
+            </FeedbackCard>
+          )}
+        </section>
+
         <section className="results-breakdown">
           <div className="section-heading">
             <div>
@@ -1691,22 +1979,22 @@ function ResultsPage({ navigate }: { navigate: Navigate }) {
 
 
 function ProgressPage({ navigate }: { navigate: Navigate }) {
-  const [sessions, setSessions] = useState<SpeakingSession[]>([]);
+  const [analytics, setAnalytics] = useState<SpeakingAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
 
-    async function loadHistory() {
+    async function loadAnalytics() {
       try {
-        const response = await getSpeakingHistory();
+        const response = await getSpeakingAnalytics();
 
         if (mounted) {
-          setSessions(response.sessions || []);
+          setAnalytics(response);
         }
       } catch {
         if (mounted) {
-          setSessions([]);
+          setAnalytics(null);
         }
       } finally {
         if (mounted) {
@@ -1715,30 +2003,12 @@ function ProgressPage({ navigate }: { navigate: Navigate }) {
       }
     }
 
-    loadHistory();
+    loadAnalytics();
 
     return () => {
       mounted = false;
     };
   }, []);
-
-  const analyzedSessions = sessions
-    .filter(
-      (session) =>
-        session.status === 'analyzed' &&
-        session.analysis?.status === 'complete'
-    )
-    .sort(
-      (a, b) =>
-        new Date(a.createdAt || 0).getTime() -
-        new Date(b.createdAt || 0).getTime()
-    );
-
-  const getDateKey = (date: Date) =>
-    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-      2,
-      '0'
-    )}-${String(date.getDate()).padStart(2, '0')}`;
 
   const formatDuration = (seconds: number) => {
     const totalMinutes = Math.round(seconds / 60);
@@ -1755,174 +2025,68 @@ function ProgressPage({ navigate }: { navigate: Navigate }) {
       : `${hours}h ${minutes}m`;
   };
 
-  const today = new Date();
-
-  const totalSpeakingSeconds = analyzedSessions.reduce(
-    (sum, session) => sum + (session.durationSeconds || 0),
-    0
-  );
-
-  const bestScore = analyzedSessions.length
-    ? Math.max(
-        ...analyzedSessions.map(
-          (session) => session.analysis?.overall || 0
-        )
-      )
-    : 0;
-
-  const currentWeekStart = new Date(today);
-  const currentDay = currentWeekStart.getDay();
-  const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
-
-  currentWeekStart.setDate(
-    currentWeekStart.getDate() - daysFromMonday
-  );
-  currentWeekStart.setHours(0, 0, 0, 0);
-
-  const firstWeekStart = new Date(
-    analyzedSessions[0]?.createdAt || today
-  );
-  const firstWeekDay = firstWeekStart.getDay();
-  const firstWeekDaysFromMonday =
-    firstWeekDay === 0 ? 6 : firstWeekDay - 1;
-
-  firstWeekStart.setDate(
-    firstWeekStart.getDate() - firstWeekDaysFromMonday
-  );
-  firstWeekStart.setHours(0, 0, 0, 0);
-
-  const getWeekAverage = (start: Date) => {
-    const end = new Date(start);
-    end.setDate(end.getDate() + 7);
-
-    const weekSessions = analyzedSessions.filter((session) => {
-      const date = new Date(session.createdAt || 0);
-      return date >= start && date < end;
+  const summary = analytics?.summary;
+  const hasHistory = Boolean(summary?.sessionsAnalyzed);
+  const dateLabel = (date: string) =>
+    new Date(date).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+  const pointLabel = (date: string) =>
+    new Date(date).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
     });
 
-    if (!weekSessions.length) {
-      return 0;
-    }
+  const TrendChart = ({
+    title,
+    points,
+    unit = '',
+    lowerIsBetter = false,
+  }: {
+    title: string;
+    points: SpeakingAnalytics['timeSeries'][keyof SpeakingAnalytics['timeSeries']];
+    unit?: string;
+    lowerIsBetter?: boolean;
+  }) => {
+    const recentPoints = points.slice(-12);
+    const max = Math.max(...recentPoints.map((point) => point.value), 1);
 
     return (
-      weekSessions.reduce(
-        (sum, session) => sum + (session.analysis?.overall || 0),
-        0
-      ) / weekSessions.length
+      <section className="chart-card">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">Trend</span>
+            <h2>{title}</h2>
+          </div>
+          {lowerIsBetter && (
+            <span className="eyebrow">Lower is better</span>
+          )}
+        </div>
+
+        {!recentPoints.length ? (
+          <p style={{ color: 'var(--muted)', fontSize: '12px' }}>
+            Not enough speaking history yet.
+          </p>
+        ) : (
+          <div className="bars">
+            {recentPoints.map((point) => (
+              <div className="bar-col" key={`${title}-${point.sessionId}`}>
+                <span className="bar-value">
+                  {Math.round(point.value)}{unit}
+                </span>
+                <div
+                  className="bar"
+                  style={{ height: `${Math.max(6, (point.value / max) * 100)}%` }}
+                />
+                <small>{pointLabel(point.date)}</small>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     );
   };
-
-  const firstWeekAverage = getWeekAverage(firstWeekStart);
-  const currentWeekAverage = getWeekAverage(currentWeekStart);
-
-  let growth = 0;
-
-  if (
-    firstWeekStart.getTime() !== currentWeekStart.getTime() &&
-    firstWeekAverage > 0
-  ) {
-    growth = Math.round(
-      ((currentWeekAverage - firstWeekAverage) /
-        firstWeekAverage) *
-        100
-    );
-  }
-
-  const weekDays = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(currentWeekStart);
-    date.setDate(currentWeekStart.getDate() + index);
-
-    const dateKey = getDateKey(date);
-
-    const seconds = analyzedSessions
-      .filter(
-        (session) =>
-          getDateKey(new Date(session.createdAt || 0)) ===
-          dateKey
-      )
-      .reduce(
-        (sum, session) => sum + (session.durationSeconds || 0),
-        0
-      );
-
-    return {
-      date,
-      label: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][
-        index
-      ],
-      minutes: Math.round(seconds / 60),
-    };
-  });
-
-  const maxMinutes = Math.max(
-    10,
-    ...weekDays.map((day) => day.minutes)
-  );
-
-  const milestones: {
-    title: string;
-    description: string;
-    date: string;
-    icon: 'trophy' | 'volume';
-    tone: 'yellow' | 'teal';
-  }[] = [];
-
-  if (analyzedSessions.length > 0) {
-    const firstSession = analyzedSessions[0];
-
-    milestones.push({
-      title: 'First practice completed',
-      description: 'You completed your first analyzed speaking practice.',
-      date: new Date(
-        firstSession.createdAt || Date.now()
-      ).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      }),
-      icon: 'trophy',
-      tone: 'yellow',
-    });
-  }
-
-  if (analyzedSessions.length >= 5) {
-    const fifthSession = analyzedSessions[4];
-
-    milestones.push({
-      title: 'Found your rhythm',
-      description: `Completed ${analyzedSessions.length} analyzed practices.`,
-      date: new Date(
-        fifthSession.createdAt || Date.now()
-      ).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      }),
-      icon: 'trophy',
-      tone: 'yellow',
-    });
-  }
-
-  if (bestScore >= 80) {
-    const bestSession = analyzedSessions.find(
-      (session) => session.analysis?.overall === bestScore
-    );
-
-    milestones.push({
-      title: 'Personal best',
-      description: `Reached your highest overall score of ${Math.round(
-        bestScore
-      )}.`,
-      date: new Date(
-        bestSession?.createdAt || Date.now()
-      ).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      }),
-      icon: 'volume',
-      tone: 'teal',
-    });
-  }
-
-  const visibleMilestones = milestones.slice(-3).reverse();
 
   return (
     <PageShell
@@ -1940,125 +2104,129 @@ function ProgressPage({ navigate }: { navigate: Navigate }) {
       <div className="progress-grid">
         <section className="progress-summary">
           <div className="progress-big">
-            <span className="eyebrow">Overall growth</span>
-
-            <strong>
-              {loading
-                ? '—'
-                : analyzedSessions.length < 2
-                  ? '—'
-                  : `${growth >= 0 ? '+' : ''}${growth}%`}
-            </strong>
-
-            <span>
-              <ArrowRight size={13} />
-              {analyzedSessions.length < 2
-                ? 'Practice more to see your growth'
-                : 'compared to your first week'}
-            </span>
+            <span className="eyebrow">Analytics overview</span>
+            <strong>{loading ? '—' : summary?.sessionsAnalyzed || 0}</strong>
+            <span>analyzed speaking sessions</span>
           </div>
 
           <div className="progress-stat-row">
             <MiniScore
               label="Speaking time"
-              value={
-                loading
-                  ? '—'
-                  : formatDuration(totalSpeakingSeconds)
-              }
-              detail=""
+              value={loading ? '—' : formatDuration(summary?.totalSpeakingTimeSeconds || 0)}
+              detail="analyzed sessions"
             />
 
             <MiniScore
-              label="Sessions"
-              value={loading ? '—' : String(analyzedSessions.length)}
-              detail=""
+              label="Average score"
+              value={loading ? '—' : String(Math.round(summary?.averageOverall || 0))}
+              detail="overall"
             />
 
             <MiniScore
               label="Best score"
-              value={loading ? '—' : String(Math.round(bestScore))}
-              detail=""
+              value={loading ? '—' : String(Math.round(summary?.bestOverall || 0))}
+              detail="overall"
+            />
+
+            <MiniScore
+              label="Latest score"
+              value={loading ? '—' : String(Math.round(summary?.latestOverall || 0))}
+              detail="overall"
             />
           </div>
         </section>
 
+        <TrendChart
+          title="Overall score"
+          points={analytics?.timeSeries.overall || []}
+        />
+
         <section className="chart-card">
           <div className="section-heading">
             <div>
-              <span className="eyebrow">Your rhythm</span>
-              <h2>Practice consistency</h2>
+              <span className="eyebrow">Skills</span>
+              <h2>Skill trends</h2>
             </div>
-
-            <span className="eyebrow">This week</span>
           </div>
+          <div className="progress-stat-row">
+            {(['grammar', 'fluency', 'vocabulary', 'pacing'] as const).map(
+              (skill) => (
+                <MiniScore
+                  key={skill}
+                  label={skill}
+                  value={hasHistory ? 'View below' : '—'}
+                  detail="session trend"
+                />
+              )
+            )}
+          </div>
+        </section>
 
-          {analyzedSessions.length === 0 ? (
-            <div
-              style={{
-                minHeight: '220px',
-                display: 'grid',
-                placeItems: 'center',
-                textAlign: 'center',
-                color: 'var(--muted)',
-                fontSize: '12px',
-              }}
-            >
-              Complete your first practice to see your speaking
-              activity here.
+        <div className="progress-grid">
+          <TrendChart
+            title="Grammar"
+            points={analytics?.timeSeries.grammar || []}
+          />
+          <TrendChart
+            title="Fluency"
+            points={analytics?.timeSeries.fluency || []}
+          />
+          <TrendChart
+            title="Vocabulary"
+            points={analytics?.timeSeries.vocabulary || []}
+          />
+          <TrendChart
+            title="Pacing"
+            points={analytics?.timeSeries.pacing || []}
+          />
+          <TrendChart
+            title="Words per minute"
+            points={analytics?.timeSeries.wordsPerMinute || []}
+          />
+          <TrendChart
+            title="Filler count"
+            points={analytics?.timeSeries.fillerCount || []}
+            lowerIsBetter
+          />
+          <TrendChart
+            title="Repeated phrases"
+            points={analytics?.timeSeries.repeatedPhraseCount || []}
+            lowerIsBetter
+          />
+          <TrendChart
+            title="Vocabulary diversity"
+            points={analytics?.timeSeries.vocabularyDiversity || []}
+          />
+          <TrendChart
+            title="Speaking duration"
+            points={analytics?.timeSeries.durationSeconds || []}
+            unit="s"
+          />
+        </div>
+
+        <section className="progress-summary">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">Current strengths</span>
+              <h2>What to focus on next</h2>
             </div>
+          </div>
+          {!hasHistory ? (
+            <p style={{ color: 'var(--muted)', fontSize: '12px' }}>
+              Complete an analyzed practice to see your strengths.
+            </p>
           ) : (
-            <div className="chart">
-              <div className="chart-y">
-                <span>{maxMinutes}m</span>
-                <span>{Math.round(maxMinutes * 0.66)}m</span>
-                <span>{Math.round(maxMinutes * 0.33)}m</span>
-                <span>0m</span>
-              </div>
-
-              <div className="bars">
-                {weekDays.map((day) => {
-                  const height =
-                    day.minutes === 0
-                      ? 5
-                      : Math.max(
-                          5,
-                          (day.minutes / maxMinutes) * 100
-                        );
-
-                  const isToday =
-                    getDateKey(day.date) ===
-                    getDateKey(today);
-
-                  return (
-                    <div
-                      className="bar-col"
-                      key={getDateKey(day.date)}
-                    >
-                      <span
-                        className="bar-value"
-                        style={{
-                          display:
-                            day.minutes > 0 ? 'block' : 'none',
-                        }}
-                      >
-                        {day.minutes}m
-                      </span>
-
-                      <div
-                        className={`bar ${
-                          isToday ? 'highlight' : ''
-                        }`}
-                        style={{
-                          height: `${height}%`,
-                        }}
-                      />
-
-                      <small>{day.label}</small>
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="progress-stat-row">
+              <MiniScore
+                label="Strongest skill"
+                value={summary?.strongestSkill || '—'}
+                detail="from your speaking profile"
+              />
+              <MiniScore
+                label="Weakest skill"
+                value={summary?.weakestSkill || '—'}
+                detail="from your speaking profile"
+              />
             </div>
           )}
         </section>
@@ -2067,7 +2235,7 @@ function ProgressPage({ navigate }: { navigate: Navigate }) {
           <div className="section-heading">
             <div>
               <span className="eyebrow">Keep going</span>
-              <h2>Recent milestones</h2>
+              <h2>Milestones</h2>
             </div>
 
             <Trophy size={20} />
@@ -2083,7 +2251,7 @@ function ProgressPage({ navigate }: { navigate: Navigate }) {
             >
               Loading your milestones...
             </p>
-          ) : visibleMilestones.length === 0 ? (
+          ) : !analytics?.milestones.length ? (
             <p
               style={{
                 color: 'var(--muted)',
@@ -2091,23 +2259,15 @@ function ProgressPage({ navigate }: { navigate: Navigate }) {
                 paddingTop: '20px',
               }}
             >
-              Your milestones will appear here as you practice.
+              Your milestones will appear here after analyzed practices.
             </p>
           ) : (
-            visibleMilestones.map((milestone, index) => (
-              <div className="milestone" key={`${milestone.title}-${index}`}>
+            analytics.milestones.map((milestone) => (
+              <div className="milestone" key={milestone.type}>
                 <span
-                  className={`milestone-icon ${
-                    milestone.tone === 'yellow'
-                      ? 'yellow-bg'
-                      : 'teal-bg'
-                  }`}
+                  className="milestone-icon yellow-bg"
                 >
-                  {milestone.icon === 'trophy' ? (
-                    <Trophy size={17} />
-                  ) : (
-                    <Volume2 size={17} />
-                  )}
+                  <Trophy size={17} />
                 </span>
 
                 <div>
@@ -2115,7 +2275,37 @@ function ProgressPage({ navigate }: { navigate: Navigate }) {
                   <p>{milestone.description}</p>
                 </div>
 
-                <small>{milestone.date}</small>
+                <small>{dateLabel(milestone.date)}</small>
+              </div>
+            ))
+          )}
+        </section>
+
+        <section className="milestones">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">Recent performance</span>
+              <h2>Latest analyzed sessions</h2>
+            </div>
+          </div>
+          {!analytics?.recentSessions.length ? (
+            <p style={{ color: 'var(--muted)', fontSize: '12px' }}>
+              Complete an analyzed practice to see recent performance.
+            </p>
+          ) : (
+            analytics.recentSessions.map((session) => (
+              <div className="milestone" key={session.sessionId}>
+                <div>
+                  <strong>
+                    {session.topic?.title || 'Speaking practice'}
+                    {session.retryGroup ? ' · Retry' : ''}
+                  </strong>
+                  <p>
+                    {dateLabel(session.date)} · {formatDuration(session.durationSeconds)}
+                    {' · '}score {Math.round(session.overall)}
+                  </p>
+                </div>
+                <small>{session.topic?.category || 'Analyzed'}</small>
               </div>
             ))
           )}
@@ -2126,6 +2316,182 @@ function ProgressPage({ navigate }: { navigate: Navigate }) {
 }
 
 function ConversationPage({ navigate }: { navigate: Navigate }) {
+  const [availableTutors, setAvailableTutors] = useState<
+    { name: string; style: string }[]
+  >([]);
+  const [selectedTutor, setSelectedTutor] = useState('Maya');
+  const [topic, setTopic] = useState('');
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [analysis, setAnalysis] = useState<
+    Awaited<ReturnType<typeof completeConversation>>['analysis'] | null
+  >(null);
+  const [loading, setLoading] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getTutors()
+      .then((response) => {
+        setAvailableTutors(response.tutors);
+        if (response.tutors[0]?.name) {
+          setSelectedTutor(response.tutors[0].name);
+        }
+      })
+      .catch((requestError) => {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'Could not load conversation partners.'
+        );
+      });
+  }, []);
+
+  const startOpenConversation = async () => {
+    if (!selectedTutor) {
+      setError('Choose a conversation partner before starting.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    try {
+      const response = await startConversation({
+        tutor: selectedTutor,
+        mode: 'conversation',
+        ...(topic.trim() ? { topic: topic.trim() } : {}),
+      });
+      setConversation(response.conversation);
+      setAnalysis(null);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Could not start the conversation.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConversationRecording = async (
+    blob: Blob,
+    durationSeconds: number
+  ) => {
+    if (!conversation || analysis) return;
+
+    setTranscribing(true);
+    setError('');
+    try {
+      const response = await transcribeAudio(blob, durationSeconds);
+      if (!response.transcript?.trim()) {
+        setError('No speech was detected. Please try recording again.');
+        return;
+      }
+
+      const messageResponse = await sendMessage(
+        conversation._id,
+        response.transcript,
+        durationSeconds
+      );
+      setConversation(messageResponse.conversation);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Could not process that recording.'
+      );
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  const endOpenConversation = async () => {
+    if (
+      !conversation ||
+      loading ||
+      transcribing ||
+      !conversation.messages.some((message) => message.role === 'user')
+    ) {
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    try {
+      const response = await completeConversation(conversation._id);
+      setConversation(response.conversation);
+      setAnalysis(response.analysis);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Could not complete the conversation.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (conversation) {
+    return (
+      <PageShell
+        eyebrow="Open conversation"
+        title={<>No script.<br /><em>Just speak.</em></>}
+        description="Follow your ideas naturally and end the conversation when you are ready for your speaking analysis."
+        back={() => navigate('/conversation')}
+      >
+        <section className="feedback-section">
+          <div className="conversation-messages">
+            {conversation.messages.map((message, index) => (
+              <div
+                className={`conversation-message ${message.role}`}
+                key={`${message.role}-${index}`}
+              >
+                <strong>{message.role === 'assistant' ? selectedTutor : 'You'}</strong>
+                <p>{message.content}</p>
+              </div>
+            ))}
+          </div>
+
+          {analysis ? (
+            <div className="results-breakdown">
+              <span className="eyebrow">Conversation speaking analysis</span>
+              <h2>Overall score: {analysis.overall}/100</h2>
+              <div className="score-list">
+                <ScoreCard label="Fluency" value={String(analysis.fluency)} change="" tone="teal" />
+                <ScoreCard label="Grammar" value={String(analysis.grammar)} change="" tone="blue" />
+                <ScoreCard label="Vocabulary" value={String(analysis.vocabulary)} change="" tone="yellow" />
+                <ScoreCard label="Pacing" value={String(analysis.pacing)} change="" tone="blue" />
+              </div>
+              {analysis.feedback?.[0] && <p>{analysis.feedback[0]}</p>}
+              <button className="button primary" onClick={() => navigate('/conversation')}>
+                Start another conversation <ArrowRight size={16} />
+              </button>
+            </div>
+          ) : (
+            <>
+              <AudioRecorder onRecordingComplete={handleConversationRecording} />
+              {transcribing && (
+                <p role="status">Transcribing and sending your response...</p>
+              )}
+              <button
+                className="button dark"
+                onClick={endOpenConversation}
+                disabled={
+                  loading ||
+                  transcribing ||
+                  !conversation.messages.some((message) => message.role === 'user')
+                }
+              >
+                {loading ? 'Analyzing...' : 'End conversation'} <ArrowRight size={16} />
+              </button>
+            </>
+          )}
+          {error && <p className="auth-error" role="alert">{error}</p>}
+        </section>
+      </PageShell>
+    );
+  }
 
   return (
 
@@ -2172,40 +2538,44 @@ function ConversationPage({ navigate }: { navigate: Navigate }) {
           </p>
 
           <div className="conversation-suggestions">
-
-            <button onClick={() => navigate('/practice')}>
-
+            <button onClick={() => setTopic('Something I learned')}>
               Something I learned
-
             </button>
-
-            <button onClick={() => navigate('/practice')}>
-
+            <button onClick={() => setTopic('A recent adventure')}>
               A recent adventure
-
             </button>
-
-            <button onClick={() => navigate('/practice')}>
-
-              Surprise me
-
+            <button onClick={() => setTopic('')}>
+              Start freely
             </button>
-
           </div>
 
         </section>
 
         <section className="conversation-tutor">
 
-          <span className="eyebrow">Your conversation partner</span>
-
-          <TutorCard
-
-            {...tutors[0]}
-
-            onSelect={() => navigate('/practice')}
-
-          />
+          <label>
+            <span className="eyebrow">Your conversation partner</span>
+            <select
+              value={selectedTutor}
+              onChange={(event) => setSelectedTutor(event.target.value)}
+              disabled={loading}
+            >
+              {availableTutors.map((tutor) => (
+                <option key={tutor.name} value={tutor.name}>
+                  {tutor.name} — {tutor.style}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="eyebrow">Topic (optional)</span>
+            <input
+              value={topic}
+              onChange={(event) => setTopic(event.target.value)}
+              placeholder="What would you like to talk about?"
+              disabled={loading}
+            />
+          </label>
 
           <div className="conversation-controls">
 
@@ -2213,7 +2583,8 @@ function ConversationPage({ navigate }: { navigate: Navigate }) {
 
               className="button primary"
 
-              onClick={() => navigate('/practice')}
+              onClick={startOpenConversation}
+              disabled={loading || !selectedTutor}
 
             >
 
@@ -2225,12 +2596,11 @@ function ConversationPage({ navigate }: { navigate: Navigate }) {
 
               className="button outline"
 
-              onClick={() => navigate('/tutors')}
+              onClick={() => setTopic('')}
 
             >
 
-              Choose another
-
+              Clear topic
             </button>
 
           </div>
@@ -2246,6 +2616,132 @@ function ConversationPage({ navigate }: { navigate: Navigate }) {
 }
 
 function RoleplayPage({ navigate }: { navigate: Navigate }) {
+  const [scenarios, setScenarios] = useState<{ id: string; label: string }[]>([]);
+  const [selectedScenario, setSelectedScenario] = useState('');
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [analysis, setAnalysis] = useState<Awaited<ReturnType<typeof completeRoleplay>>['analysis'] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getTutors()
+      .then((response) => {
+        setScenarios(response.scenarios);
+        setSelectedScenario(response.scenarios[0]?.id || '');
+      })
+      .catch((requestError) => {
+        setError(requestError instanceof Error ? requestError.message : 'Could not load roleplay scenarios.');
+      });
+  }, []);
+
+  const startRoleplay = async (scenarioId = selectedScenario) => {
+    if (!scenarioId) return;
+    setLoading(true);
+    setError('');
+    try {
+      const response = await startConversation({
+        mode: 'roleplay',
+        scenario: scenarioId,
+      });
+      setConversation(response.conversation);
+      setAnalysis(null);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Could not start the roleplay.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRecording = async (blob: Blob, durationSeconds: number) => {
+    if (!conversation) return;
+    setTranscribing(true);
+    setError('');
+    try {
+      const transcription = await transcribeAudio(blob, durationSeconds);
+      if (!transcription.transcript?.trim()) {
+        setError('No speech was detected. Please try recording again.');
+        return;
+      }
+      const response = await sendMessage(
+        conversation._id,
+        transcription.transcript,
+        durationSeconds
+      );
+      setConversation(response.conversation);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Could not process that recording.');
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  const endRoleplay = async () => {
+    if (!conversation) return;
+    setLoading(true);
+    setError('');
+    try {
+      const response = await completeRoleplay(conversation._id);
+      setConversation(response.conversation);
+      setAnalysis(response.analysis);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Could not finish the roleplay.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (conversation) {
+    return (
+      <PageShell
+        eyebrow="Roleplay session"
+        title={<>Stay in the<br /><em>conversation.</em></>}
+        description="Speak naturally, then end the session when you are ready for your analysis."
+        back={() => navigate('/roleplay')}
+      >
+        <section className="feedback-section">
+          <div className="conversation-messages">
+            {conversation.messages.map((message, index) => (
+              <div className={`conversation-message ${message.role}`} key={`${message.role}-${index}`}>
+                <strong>{message.role === 'assistant' ? 'Scenario partner' : 'You'}</strong>
+                <p>{message.content}</p>
+              </div>
+            ))}
+          </div>
+
+          {analysis ? (
+            <div className="results-breakdown">
+              <span className="eyebrow">Roleplay analysis</span>
+              <h2>Overall score: {analysis.overall}/100</h2>
+              <div className="score-list">
+                <ScoreCard label="Fluency" value={String(analysis.fluency)} change="" tone="teal" />
+                <ScoreCard label="Grammar" value={String(analysis.grammar)} change="" tone="blue" />
+                <ScoreCard label="Vocabulary" value={String(analysis.vocabulary)} change="" tone="yellow" />
+                <ScoreCard label="Pacing" value={String(analysis.pacing)} change="" tone="blue" />
+              </div>
+              {analysis.feedback.length > 0 && <p>{analysis.feedback[0]}</p>}
+              <button className="button primary" onClick={() => navigate('/roleplay')}>
+                Practice another scenario <ArrowRight size={16} />
+              </button>
+            </div>
+          ) : (
+            <>
+              <AudioRecorder onRecordingComplete={handleRecording} />
+              {transcribing && <p role="status">Transcribing and sending your response...</p>}
+              <button
+                className="button dark"
+                onClick={endRoleplay}
+                disabled={loading || transcribing || !conversation.messages.some((message) => message.role === 'user')}
+              >
+                {loading ? 'Analyzing...' : 'End roleplay'} <ArrowRight size={16} />
+              </button>
+            </>
+          )}
+          {error && <p className="auth-error" role="alert">{error}</p>}
+        </section>
+      </PageShell>
+    );
+  }
 
   return (
 
@@ -2311,16 +2807,8 @@ function RoleplayPage({ navigate }: { navigate: Navigate }) {
 
             </span>
 
-            <button
-
-              className="button dark"
-
-              onClick={() => navigate('/practice')}
-
-            >
-
-              Enter scene <ArrowRight size={16} />
-
+            <button className="button dark" onClick={() => navigate('/presentation')}>
+              Enter presentation <ArrowRight size={16} />
             </button>
 
           </div>
@@ -2331,21 +2819,15 @@ function RoleplayPage({ navigate }: { navigate: Navigate }) {
 
           <span className="eyebrow">More scenarios</span>
 
-          {[
-
-            ['A job interview', 'Make a strong first impression'],
-
-            ['Meeting a new neighbor', 'Keep a friendly conversation flowing'],
-
-            ['Asking for feedback', 'Say what you need clearly'],
-
-          ].map(([title, description], index) => (
+          {scenarios.map((scenario, index) => (
 
             <button
 
-              key={title}
-
-              onClick={() => navigate('/practice')}
+              key={scenario.id}
+              onClick={() => {
+                setSelectedScenario(scenario.id);
+                startRoleplay(scenario.id);
+              }}
 
             >
 
@@ -2357,9 +2839,8 @@ function RoleplayPage({ navigate }: { navigate: Navigate }) {
 
               <span>
 
-                <strong>{title}</strong>
-
-                <small>{description}</small>
+                <strong>{scenario.label}</strong>
+                <small>Select this scenario and begin a real conversation</small>
 
               </span>
 
@@ -2372,11 +2853,209 @@ function RoleplayPage({ navigate }: { navigate: Navigate }) {
         </div>
 
       </div>
+      {error && <p className="auth-error" role="alert">{error}</p>}
 
     </PageShell>
 
   );
 
+}
+
+function PresentationPage({ navigate }: { navigate: Navigate }) {
+  const [topics, setTopics] = useState<SpeakingTopic[]>([]);
+  const [selectedTopicId, setSelectedTopicId] = useState('');
+  const [session, setSession] = useState<SpeakingSession | null>(null);
+  const [transcript, setTranscript] = useState('');
+  const [durationSeconds, setDurationSeconds] = useState(0);
+  const [analysis, setAnalysis] = useState<
+    Awaited<ReturnType<typeof completePresentation>>['analysis'] | null
+  >(null);
+  const [loading, setLoading] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getPresentationTopics()
+      .then((response) => {
+        setTopics(response.topics);
+        setSelectedTopicId(response.topics[0]?._id || '');
+      })
+      .catch((requestError) => {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'Could not load presentation topics.'
+        );
+      });
+  }, []);
+
+  const selectedTopic = topics.find((topic) => topic._id === selectedTopicId);
+
+  const startPresentationSession = async () => {
+    if (!selectedTopicId) {
+      setError('Choose a presentation topic before starting.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    try {
+      const response = await startPresentation();
+      setSession(response.session);
+      setTranscript('');
+      setDurationSeconds(0);
+      setAnalysis(null);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Could not start the presentation.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePresentationRecording = async (
+    blob: Blob,
+    segmentDurationSeconds: number
+  ) => {
+    if (!session || analysis) return;
+
+    setTranscribing(true);
+    setError('');
+    try {
+      const response = await transcribeAudio(blob, segmentDurationSeconds);
+      if (!response.transcript?.trim()) {
+        setError('No speech was detected. Please try recording again.');
+        return;
+      }
+
+      setTranscript((current) =>
+        current ? `${current}\n\n${response.transcript.trim()}` : response.transcript.trim()
+      );
+      setDurationSeconds((current) => current + Math.max(0, segmentDurationSeconds));
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Could not transcribe that presentation segment.'
+      );
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  const endPresentation = async () => {
+    if (!session || !transcript.trim() || loading || transcribing) return;
+
+    setLoading(true);
+    setError('');
+    try {
+      const response = await completePresentation(
+        session._id,
+        transcript,
+        durationSeconds
+      );
+      setSession(response.session);
+      setAnalysis(response.analysis);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Could not complete the presentation.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (session) {
+    return (
+      <PageShell
+        eyebrow="Presentation practice"
+        title={<>Present your<br /><em>ideas clearly.</em></>}
+        description={selectedTopic?.prompt || selectedTopic?.title || 'Deliver your presentation naturally, one segment at a time.'}
+        back={() => navigate('/presentation')}
+      >
+        <section className="feedback-section">
+          <h2>{selectedTopic?.title}</h2>
+          <div className="transcript-card">
+            <span className="eyebrow">Your presentation transcript</span>
+            <p>{transcript || 'Your transcript will appear here after you record a segment.'}</p>
+          </div>
+
+          {analysis ? (
+            <div className="results-breakdown">
+              <span className="eyebrow">Presentation speaking analysis</span>
+              <h2>Overall score: {analysis.overall}/100</h2>
+              <div className="score-list">
+                <ScoreCard label="Fluency" value={String(analysis.fluency)} change="" tone="teal" />
+                <ScoreCard label="Grammar" value={String(analysis.grammar)} change="" tone="blue" />
+                <ScoreCard label="Vocabulary" value={String(analysis.vocabulary)} change="" tone="yellow" />
+                <ScoreCard label="Pacing" value={String(analysis.pacing)} change="" tone="blue" />
+              </div>
+              {analysis.feedback?.[0] && <p>{analysis.feedback[0]}</p>}
+              <button className="button primary" onClick={() => navigate('/presentation')}>
+                Present another topic <ArrowRight size={16} />
+              </button>
+            </div>
+          ) : (
+            <>
+              <AudioRecorder onRecordingComplete={handlePresentationRecording} />
+              {transcribing && (
+                <p role="status">Transcribing this presentation segment...</p>
+              )}
+              <button
+                className="button dark"
+                onClick={endPresentation}
+                disabled={loading || transcribing || !transcript.trim()}
+              >
+                {loading ? 'Analyzing...' : 'End presentation'} <ArrowRight size={16} />
+              </button>
+            </>
+          )}
+          {error && <p className="auth-error" role="alert">{error}</p>}
+        </section>
+      </PageShell>
+    );
+  }
+
+  return (
+    <PageShell
+      eyebrow="Presentation studio"
+      title={<>Share your<br /><em>point of view.</em></>}
+      description="Choose a real speaking topic, then build your presentation in recorded segments."
+      back={() => navigate('/dashboard')}
+    >
+      <section className="feedback-section">
+        <label>
+          <span className="eyebrow">Presentation topic</span>
+          <select
+            value={selectedTopicId}
+            onChange={(event) => setSelectedTopicId(event.target.value)}
+            disabled={loading}
+          >
+            <option value="">Select a topic</option>
+            {topics.map((topic) => (
+              <option key={topic._id} value={topic._id}>{topic.title}</option>
+            ))}
+          </select>
+        </label>
+        {selectedTopic && (
+          <p>{selectedTopic.prompt || selectedTopic.title}</p>
+        )}
+        <button
+          className="button dark"
+          onClick={startPresentationSession}
+          disabled={loading || !selectedTopicId}
+        >
+          {loading ? 'Starting...' : 'Start presentation'} <ArrowRight size={16} />
+        </button>
+        {error && <p className="auth-error" role="alert">{error}</p>}
+      </section>
+    </PageShell>
+  );
 }
 
 function Clock3Icon() {
@@ -2386,6 +3065,174 @@ function Clock3Icon() {
 }
 
 function DebatePage({ navigate }: { navigate: Navigate }) {
+  const [topics, setTopics] = useState<{ id: string; title: string; prompt: string }[]>([]);
+  const [selectedTopic, setSelectedTopic] = useState('');
+  const [position, setPosition] = useState<'for' | 'against' | ''>('');
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [analysis, setAnalysis] = useState<
+    Awaited<ReturnType<typeof completeDebate>>['analysis'] | null
+  >(null);
+  const [loading, setLoading] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getTutors()
+      .then((response) => {
+        setTopics(response.debateTopics);
+        setSelectedTopic(response.debateTopics[0]?.id || '');
+      })
+      .catch((requestError) => {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : 'Could not load debate topics.'
+        );
+      });
+  }, []);
+
+  const startDebate = async (
+    topicId = selectedTopic,
+    debatePosition = position
+  ) => {
+    if (!topicId || !debatePosition) {
+      setError('Choose a debate topic and a position before starting.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    try {
+      const response = await startConversation({
+        mode: 'debate',
+        debateTopic: topicId,
+        debatePosition,
+      });
+      setConversation(response.conversation);
+      setAnalysis(null);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Could not start the debate.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDebateRecording = async (
+    blob: Blob,
+    durationSeconds: number
+  ) => {
+    if (!conversation) return;
+
+    setTranscribing(true);
+    setError('');
+    try {
+      const transcription = await transcribeAudio(blob, durationSeconds);
+      if (!transcription.transcript?.trim()) {
+        setError('No speech was detected. Please try recording again.');
+        return;
+      }
+
+      const response = await sendMessage(
+        conversation._id,
+        transcription.transcript,
+        durationSeconds
+      );
+      setConversation(response.conversation);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Could not process that recording.'
+      );
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  const endDebate = async () => {
+    if (!conversation) return;
+
+    setLoading(true);
+    setError('');
+    try {
+      const response = await completeDebate(conversation._id);
+      setConversation(response.conversation);
+      setAnalysis(response.analysis);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Could not complete the debate.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (conversation) {
+    return (
+      <PageShell
+        eyebrow="Debate session"
+        title={<>Make your<br /><em>case clearly.</em></>}
+        description="Respond to the counterargument, then end the debate when you are ready for your speaking analysis."
+        back={() => navigate('/debate')}
+      >
+        <section className="feedback-section">
+          <div className="conversation-messages">
+            {conversation.messages.map((message, index) => (
+              <div
+                className={`conversation-message ${message.role}`}
+                key={`${message.role}-${index}`}
+              >
+                <strong>{message.role === 'assistant' ? 'Debate partner' : 'You'}</strong>
+                <p>{message.content}</p>
+              </div>
+            ))}
+          </div>
+
+          {analysis ? (
+            <div className="results-breakdown">
+              <span className="eyebrow">Debate speaking analysis</span>
+              <h2>Overall score: {analysis.overall}/100</h2>
+              <div className="score-list">
+                <ScoreCard label="Fluency" value={String(analysis.fluency)} change="" tone="teal" />
+                <ScoreCard label="Grammar" value={String(analysis.grammar)} change="" tone="blue" />
+                <ScoreCard label="Vocabulary" value={String(analysis.vocabulary)} change="" tone="yellow" />
+                <ScoreCard label="Pacing" value={String(analysis.pacing)} change="" tone="blue" />
+              </div>
+              {analysis.feedback.length > 0 && <p>{analysis.feedback[0]}</p>}
+              <button className="button primary" onClick={() => navigate('/debate')}>
+                Start another debate <ArrowRight size={16} />
+              </button>
+            </div>
+          ) : (
+            <>
+              <AudioRecorder onRecordingComplete={handleDebateRecording} />
+              {transcribing && (
+                <p role="status">Transcribing and sending your response...</p>
+              )}
+              <button
+                className="button dark"
+                onClick={endDebate}
+                disabled={
+                  loading ||
+                  transcribing ||
+                  !conversation.messages.some((message) => message.role === 'user')
+                }
+              >
+                {loading ? 'Analyzing...' : 'End debate'} <ArrowRight size={16} />
+              </button>
+            </>
+          )}
+          {error && <p className="auth-error" role="alert">{error}</p>}
+        </section>
+      </PageShell>
+    );
+  }
 
   return (
 
@@ -2421,19 +3268,29 @@ function DebatePage({ navigate }: { navigate: Navigate }) {
 
         </div>
 
-        <h2>
+        <h2>{topics.find((topic) => topic.id === selectedTopic)?.title || 'Choose a debate topic'}</h2>
 
-          Should every workplace
-
-          <br />
-
-          have a <em>four-day week?</em>
-
-        </h2>
+        <label>
+          <span className="eyebrow">Topic</span>
+          <select
+            value={selectedTopic}
+            onChange={(event) => setSelectedTopic(event.target.value)}
+            disabled={loading}
+          >
+            <option value="">Select a topic</option>
+            {topics.map((topic) => (
+              <option key={topic.id} value={topic.id}>{topic.title}</option>
+            ))}
+          </select>
+        </label>
 
         <div className="debate-options">
 
-          <button onClick={() => navigate('/practice')}>
+          <button
+            className={position === 'for' ? 'selected' : ''}
+            onClick={() => setPosition('for')}
+            disabled={loading}
+          >
 
             <span>FOR</span>
 
@@ -2443,7 +3300,11 @@ function DebatePage({ navigate }: { navigate: Navigate }) {
 
           </button>
 
-          <button onClick={() => navigate('/practice')}>
+          <button
+            className={position === 'against' ? 'selected' : ''}
+            onClick={() => setPosition('against')}
+            disabled={loading}
+          >
 
             <span>AGAINST</span>
 
@@ -2456,11 +3317,16 @@ function DebatePage({ navigate }: { navigate: Navigate }) {
         </div>
 
         <div className="debate-note">
-
           <CircleHelp size={16} /> You will have 90 seconds to make your case.
-
         </div>
-
+        <button
+          className="button dark"
+          onClick={() => startDebate()}
+          disabled={loading || !selectedTopic || !position}
+        >
+          {loading ? 'Starting...' : 'Start debate'} <ArrowRight size={16} />
+        </button>
+        {error && <p className="auth-error" role="alert">{error}</p>}
       </div>
 
     </PageShell>
@@ -2872,15 +3738,21 @@ function ProfilePage({ navigate }: { navigate: Navigate }) {
   const { logout, user } = useAuth();
   const [speakingProfile, setSpeakingProfile] =
     useState<SpeakingProfile | null>(null);
+  const [vocabularyProfile, setVocabularyProfile] =
+    useState<ProfileResponse['vocabularyProfile']>(undefined);
+  const [overusedWords, setOverusedWords] =
+    useState<ProfileResponse['overusedWords']>([]);
   const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
 
-    getSpeakingProfile()
-      .then((response) => {
+    Promise.all([getSpeakingProfile(), getProfile()])
+      .then(([speakingResponse, profileResponse]) => {
         if (mounted) {
-          setSpeakingProfile(response.profile);
+          setSpeakingProfile(speakingResponse.profile);
+          setVocabularyProfile(profileResponse.vocabularyProfile);
+          setOverusedWords(profileResponse.overusedWords || []);
         }
       })
       .catch(() => {
@@ -3037,6 +3909,125 @@ function ProfilePage({ navigate }: { navigate: Navigate }) {
 
           </button>
 
+        </section>
+
+        <section className="feedback-section">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">Vocabulary history</span>
+              <h2>Vocabulary progress</h2>
+            </div>
+          </div>
+
+          {!vocabularyProfile ||
+          !Array.isArray(vocabularyProfile.words) ||
+          vocabularyProfile.words.length === 0 ? (
+            <p style={{ color: 'var(--muted)', fontSize: '12px' }}>
+              Complete a speaking session to start building your vocabulary history.
+            </p>
+          ) : (
+            (() => {
+              const words = vocabularyProfile.words.filter(
+                (entry) =>
+                  typeof entry.word === 'string' &&
+                  entry.word.trim() &&
+                  Number.isFinite(entry.count)
+              );
+              const frequentWords = [...words]
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 5);
+              const recentWords = [...words]
+                .filter(
+                  (entry) =>
+                    entry.lastUsedAt &&
+                    Number.isFinite(new Date(entry.lastUsedAt).getTime())
+                )
+                .sort(
+                  (a, b) =>
+                    new Date(b.lastUsedAt || 0).getTime() -
+                    new Date(a.lastUsedAt || 0).getTime()
+                )
+                .slice(0, 5);
+              const targetWords = (vocabularyProfile.targetWords || []).filter(
+                (entry) => typeof entry.word === 'string' && entry.word.trim()
+              );
+
+              return (
+                <div className="vocabulary-list">
+                  <div className="vocabulary-item">
+                    <div>
+                      <span className="answer-label">Tracked word uses</span>
+                      <strong>{vocabularyProfile.totalWordsUsed || 0}</strong>
+                      <span className="vocabulary-meaning">
+                        {words.length} unique tracked words
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="vocabulary-item">
+                    <div>
+                      <span className="answer-label">Most frequently used</span>
+                      <strong>
+                        {frequentWords.length > 0
+                          ? frequentWords
+                              .map((entry) => `${entry.word} × ${entry.count}`)
+                              .join(', ')
+                          : 'No tracked words yet.'}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="vocabulary-item">
+                    <div>
+                      <span className="answer-label">Overused words</span>
+                      <strong>
+                        {overusedWords.length > 0
+                          ? overusedWords
+                              .map((entry) => `${entry.word} × ${entry.count}`)
+                              .join(', ')
+                          : 'No overused words yet.'}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="vocabulary-item">
+                    <div>
+                      <span className="answer-label">Recently used</span>
+                      <strong>
+                        {recentWords.length > 0
+                          ? recentWords
+                              .map(
+                                (entry) =>
+                                  `${entry.word} · ${new Date(
+                                    entry.lastUsedAt || ''
+                                  ).toLocaleDateString()}`
+                              )
+                              .join(', ')
+                          : 'No recent usage dates available.'}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {targetWords.length > 0 && (
+                    <div className="vocabulary-item">
+                      <div>
+                        <span className="answer-label">Practice vocabulary</span>
+                        <strong>
+                          {targetWords
+                            .slice(0, 5)
+                            .map(
+                              (entry) =>
+                                `${entry.word} · practiced ${entry.practicedCount || 0} times`
+                            )
+                            .join(', ')}
+                        </strong>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()
+          )}
         </section>
 
         <section className="feedback-section">
@@ -3269,7 +4260,7 @@ function AuthPage({
 
 }) {
 
-  const { login, register } = useAuth();
+  const { login, loginWithGoogle, register } = useAuth();
 
   const [name, setName] = useState('');
 
@@ -3280,6 +4271,64 @@ function AuthPage({
   const [error, setError] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [validationAttempted, setValidationAttempted] = useState(false);
+  const nameRef = useRef<HTMLInputElement | null>(null);
+  const emailRef = useRef<HTMLInputElement | null>(null);
+  const passwordRef = useRef<HTMLInputElement | null>(null);
+  const [googleReady, setGoogleReady] = useState(false);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const googleScriptId = 'google-identity-services';
+
+  useEffect(() => {
+    if (!googleClientId) {
+      return;
+    }
+
+    const initializeGoogle = () => {
+      if (!window.google?.accounts.id) {
+        return;
+      }
+
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async (response) => {
+          setError('');
+          setSubmitting(true);
+          try {
+            await loginWithGoogle(response.credential);
+            navigate(signup ? '/assessment' : '/dashboard');
+          } catch (requestError) {
+            setError(
+              requestError instanceof ApiError
+                ? requestError.message
+                : 'Unable to sign in with Google. Please try again.'
+            );
+          } finally {
+            setSubmitting(false);
+          }
+        },
+      });
+      setGoogleReady(true);
+    };
+
+    const existingScript = document.getElementById(googleScriptId);
+    if (existingScript) {
+      initializeGoogle();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = googleScriptId;
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = initializeGoogle;
+    script.onerror = () => {
+      setError('Unable to load Google authentication. Please use email and password.');
+    };
+    document.head.appendChild(script);
+  }, [googleClientId, loginWithGoogle, navigate, signup]);
 
   const handleSubmit = async (
 
@@ -3290,6 +4339,7 @@ function AuthPage({
     event.preventDefault();
 
     setError('');
+    setValidationAttempted(true);
 
     if (
 
@@ -3300,9 +4350,14 @@ function AuthPage({
       (signup && !name.trim())
 
     ) {
-
       setError('Please complete all required fields.');
-
+      if (signup && !name.trim()) {
+        nameRef.current?.focus();
+      } else if (!email.trim()) {
+        emailRef.current?.focus();
+      } else if (!password) {
+        passwordRef.current?.focus();
+      }
       return;
 
     }
@@ -3444,30 +4499,23 @@ function AuthPage({
         <form className="auth-form" onSubmit={handleSubmit}>
 
           {signup && (
-
-            <label>
-
+            <label htmlFor="auth-name">
               Your name
-
               <div className="input-wrap">
-
                 <UserRound size={17} />
-
                 <input
-
+                  ref={nameRef}
+                  id="auth-name"
                   value={name}
 
                   onChange={(event) =>
-
                     setName(event.target.value)
-
                   }
-
                   type="text"
-
                   placeholder="Alex Rivera"
-
                   autoComplete="name"
+                  aria-invalid={validationAttempted && !name.trim()}
+                  aria-describedby={error ? 'auth-error' : undefined}
 
                 />
 
@@ -3477,16 +4525,13 @@ function AuthPage({
 
           )}
 
-          <label>
-
+          <label htmlFor="auth-email">
             Email address
-
             <div className="input-wrap">
-
               <Mail size={17} />
-
               <input
-
+                ref={emailRef}
+                id="auth-email"
                 value={email}
 
                 onChange={(event) =>
@@ -3496,27 +4541,21 @@ function AuthPage({
                 }
 
                 type="email"
-
                 placeholder="you@example.com"
-
                 autoComplete="email"
-
+                aria-invalid={validationAttempted && !email.trim()}
+                aria-describedby={error ? 'auth-error' : undefined}
               />
-
             </div>
-
           </label>
 
-          <label>
-
+          <label htmlFor="auth-password">
             Password
-
             <div className="input-wrap">
-
               <LockKeyhole size={17} />
-
               <input
-
+                ref={passwordRef}
+                id="auth-password"
                 value={password}
 
                 onChange={(event) =>
@@ -3525,8 +4564,7 @@ function AuthPage({
 
                 }
 
-                type="password"
-
+                type={showPassword ? 'text' : 'password'}
                 placeholder="At least 8 characters"
 
                 autoComplete={
@@ -3534,15 +4572,20 @@ function AuthPage({
                   signup
 
                     ? 'new-password'
-
                     : 'current-password'
-
                 }
-
+                aria-invalid={validationAttempted && !password}
+                aria-describedby={error ? 'auth-error' : undefined}
               />
-
+              <button
+                className="input-action"
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
-
           </label>
 
           {signup && (
@@ -3550,8 +4593,7 @@ function AuthPage({
             <label className="check-label">
 
               <input type="checkbox" /> I agree to the{' '}
-
-              <u>Terms of service</u>
+              <span>Terms of service</span>
 
             </label>
 
@@ -3560,9 +4602,8 @@ function AuthPage({
           {error && (
 
             <p
-
+              id="auth-error"
               className="auth-error"
-
               role="alert"
 
             >
@@ -3580,7 +4621,7 @@ function AuthPage({
             type="submit"
 
             disabled={submitting}
-
+            aria-busy={submitting}
           >
 
             {submitting
@@ -3606,15 +4647,20 @@ function AuthPage({
         </div>
 
         <button
-
           className="social-button"
-
           type="button"
-
+          disabled={submitting || !googleReady}
+          aria-busy={submitting}
+          onClick={() => {
+            setError('');
+            if (!googleReady || !window.google?.accounts.id) {
+              setError('Google authentication is not ready. Please try again.');
+              return;
+            }
+            window.google.accounts.id.prompt();
+          }}
         >
-
-          Continue with Google
-
+          {submitting ? 'Please wait…' : 'Continue with Google'}
         </button>
 
         <p className="auth-switch">
@@ -3812,9 +4858,11 @@ function App() {
     ),
 
     '/practice': (
-
       <PracticePage navigate={navigate} />
+    ),
 
+    '/pronunciation-practice': (
+      <ReferencePracticePage navigate={navigate} />
     ),
 
     '/results': (
@@ -3838,6 +4886,12 @@ function App() {
     '/roleplay': (
 
       <RoleplayPage navigate={navigate} />
+
+    ),
+
+    '/presentation': (
+
+      <PresentationPage navigate={navigate} />
 
     ),
 

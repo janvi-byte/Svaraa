@@ -6,6 +6,7 @@ export type AuthUser = {
   email: string;
   preferredLanguage?: string;
   practiceGoal?: string;
+  avatarUrl?: string;
 };
 
 type AuthResponse = {
@@ -30,6 +31,15 @@ export async function login(email: string, password: string): Promise<AuthRespon
   const result = await apiRequest<AuthResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
+  });
+  storeAuth(result.token, result.user);
+  return result;
+}
+
+export async function loginWithGoogle(credential: string): Promise<AuthResponse> {
+  const result = await apiRequest<AuthResponse>('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ credential }),
   });
   storeAuth(result.token, result.user);
   return result;

@@ -24,20 +24,68 @@ const STOP_WORDS = new Set([
 const OVERUSED_THRESHOLD = 5;
 const COMMON_OVERUSED = ['good','nice','thing','very','big','bad','happy','sad','a lot','make','help'];
 
-export async function updateVocabularyProfile(userId, transcript) {
-  if (!transcript || !transcript.trim()) {
-    return VocabularyProfile.findOneAndUpdate(
-      { user: userId },
-      { $setOnInsert: { user: userId } },
-      { new: true, upsert: true }
-    );
+function extractContentWords(transcript) {
+  if (typeof transcript !== 'string' || !transcript.trim()) return [];
+
+  const wordMatches = transcript
+    .toLowerCase()
+    .match(/\b[a-zA-Z]+(?:'[a-zA-Z]+)?\b/g) || [];
+
+  return wordMatches.filter((word) => !STOP_WORDS.has(word));
+}
+
+function emptyVocabularySummary() {
+  return {
+    contentWords: [],
+    uniqueWords: [],
+    newWords: [],
+    previouslyUsedWords: [],
+    repeatedWords: [],
+    contentWordCount: 0,
+    contentVocabularyDiversity: 0,
+  };
+}
+
+export async function getVocabularySummary(userId, transcript) {
+  const contentWords = extractContentWords(transcript);
+  if (!contentWords.length) return emptyVocabularySummary();
+
+  const profile = await VocabularyProfile.findOne({ user: userId }).lean();
+  const existingWords = new Set(
+    (profile?.words || [])
+      .map((entry) => entry.word)
+      .filter((word) => typeof word === 'string' && word.trim())
+  );
+  const counts = new Map();
+
+  for (const word of contentWords) {
+    counts.set(word, (counts.get(word) || 0) + 1);
   }
 
-  const wordMatches = transcript.toLowerCase().match(/\b[a-zA-Z]+(?:'[a-zA-Z]+)?\b/g) || [];
-  const contentWords = wordMatches.filter((w) => !STOP_WORDS.has(w));
-  const wordCounts = new Map();
-  for (const word of contentWords) {
-    wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
+  const uniqueWords = [...counts.keys()];
+  return {
+    contentWords,
+    uniqueWords,
+    newWords: uniqueWords.filter((word) => !existingWords.has(word)),
+    previouslyUsedWords: uniqueWords.filter((word) => existingWords.has(word)),
+    repeatedWords: uniqueWords
+      .filter((word) => counts.get(word) > 1)
+      .map((word) => ({ word, count: counts.get(word) })),
+    contentWordCount: contentWords.length,
+    contentVocabularyDiversity: Math.round(
+      (uniqueWords.length / contentWords.length) * 100
+    ),
+  };
+}
+
+export async function updateVocabularyProfileForSession(
+  userId,
+  sessionId,
+  transcript
+) {
+  const summary = await getVocabularySummary(userId, transcript);
+  if (!summary.contentWordCount || !sessionId) {
+    return { profile: null, summary, updated: false };
   }
 
   const profile = await VocabularyProfile.findOneAndUpdate(
@@ -45,6 +93,70 @@ export async function updateVocabularyProfile(userId, transcript) {
     { $setOnInsert: { user: userId } },
     { new: true, upsert: true }
   );
+  const claim = await VocabularyProfile.updateOne(
+    {
+      _id: profile._id,
+      processedSessionIds: { $ne: sessionId },
+    },
+    { $addToSet: { processedSessionIds: sessionId } }
+  );
+
+  if (claim.modifiedCount !== 1) {
+    return {
+      profile: await VocabularyProfile.findById(profile._id),
+      summary,
+      updated: false,
+    };
+  }
+
+  const currentProfile = await VocabularyProfile.findById(profile._id);
+  if (!currentProfile) {
+    return { profile: null, summary, updated: false };
+  }
+
+  const wordCounts = new Map();
+  for (const word of summary.contentWords) {
+    wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
+  }
+
+  const existingMap = new Map(
+    (currentProfile.words || []).map((entry) => [entry.word, entry])
+  );
+  for (const [word, count] of wordCounts) {
+    const existing = existingMap.get(word);
+    if (existing) {
+      existing.count += count;
+      existing.lastUsedAt = new Date();
+    } else {
+      currentProfile.words.push({ word, count, lastUsedAt: new Date() });
+    }
+  }
+
+  currentProfile.totalWordsUsed += summary.contentWordCount;
+  currentProfile.markModified('words');
+  await currentProfile.save();
+  return { profile: currentProfile, summary, updated: true };
+}
+
+export async function updateVocabularyProfile(userId, transcript) {
+  const contentWords = extractContentWords(transcript);
+  if (!contentWords.length) {
+    return VocabularyProfile.findOneAndUpdate(
+      { user: userId },
+      { $setOnInsert: { user: userId } },
+      { new: true, upsert: true }
+    );
+  }
+
+  const profile = await VocabularyProfile.findOneAndUpdate(
+    { user: userId },
+    { $setOnInsert: { user: userId } },
+    { new: true, upsert: true }
+  );
+  const wordCounts = new Map();
+  for (const word of contentWords) {
+    wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
+  }
 
   const existingMap = new Map((profile.words || []).map((entry) => [entry.word, entry]));
   for (const [word, count] of wordCounts) {

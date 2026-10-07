@@ -1,6 +1,7 @@
 import SpeakingProfile from '../models/SpeakingProfile.js';
 import Topic from '../models/Topic.js';
 import SpeakingSession from '../models/SpeakingSession.js';
+import topics from '../data/topics.js';
 
 const WEAKNESS_CATEGORIES = {
   grammar: { categories: ['Storytelling', 'Personal', 'General'] },
@@ -11,24 +12,9 @@ const WEAKNESS_CATEGORIES = {
 
 const DIFFICULTY_ORDER = ['Easy', 'Medium', 'Hard'];
 
-const fallbackTopics = [
-  { title: 'A perfect weekend', prompt: 'Tell us about your ideal way to spend a weekend.', difficulty: 'Easy', durationSeconds: 60, category: 'Storytelling' },
-  { title: 'A bold decision', prompt: 'Share a decision that changed the way you see things.', difficulty: 'Medium', durationSeconds: 120, category: 'Personal' },
-  { title: 'The future of work', prompt: 'What will work look like five years from now?', difficulty: 'Medium', durationSeconds: 120, category: 'Ideas' },
-  { title: 'A skill everyone should learn', prompt: 'What is one skill you think everyone should learn and why?', difficulty: 'Easy', durationSeconds: 60, category: 'Ideas' },
-  { title: 'Technology in daily life', prompt: 'How has technology changed your everyday life?', difficulty: 'Medium', durationSeconds: 120, category: 'Technology' },
-  { title: 'A memorable mistake', prompt: 'Tell us about a mistake that taught you something valuable.', difficulty: 'Medium', durationSeconds: 120, category: 'Storytelling' },
-  { title: 'Describe your hometown', prompt: 'Describe the place you grew up and what makes it special.', difficulty: 'Easy', durationSeconds: 60, category: 'Storytelling' },
-  { title: 'A book that changed you', prompt: 'Talk about a book that influenced your thinking.', difficulty: 'Medium', durationSeconds: 120, category: 'Personal' },
-  { title: 'Compare two cultures', prompt: 'Compare two cultures you have experienced. What surprised you?', difficulty: 'Hard', durationSeconds: 180, category: 'Ideas' },
-  { title: 'Explain a complex topic simply', prompt: 'Pick a topic you understand well and explain it as if to a beginner.', difficulty: 'Hard', durationSeconds: 180, category: 'Ideas' },
-  { title: 'A time you persuaded someone', prompt: "Describe a situation where you changed someone's mind.", difficulty: 'Medium', durationSeconds: 120, category: 'Storytelling' },
-  { title: 'Your ideal workplace', prompt: 'Describe what your ideal workplace would look like and why.', difficulty: 'Easy', durationSeconds: 60, category: 'General' },
-];
-
 async function ensureTopicsExist() {
   await Topic.bulkWrite(
-    fallbackTopics.map((topic) => ({
+    topics.map((topic) => ({
       updateOne: {
         filter: { title: topic.title },
         update: { $setOnInsert: topic },

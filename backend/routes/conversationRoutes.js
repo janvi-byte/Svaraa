@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   addMessage,
+  completeRoleplay,
   conversationHistory,
   getTutors,
   startConversation,
@@ -12,5 +13,6 @@ router.use(protect);
 router.get('/tutors', getTutors);
 router.post('/start', startConversation);
 router.post('/:conversationId/message', addMessage);
+router.post('/:conversationId/complete', completeRoleplay);
 router.get('/history', conversationHistory);
 export default router;

@@ -21,6 +21,8 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.alignment-venv/
+.pronunciation-venv/
 
 __pycache__/
 *.pyc

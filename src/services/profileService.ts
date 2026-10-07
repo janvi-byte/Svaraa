@@ -1,4 +1,5 @@
 import { apiGet, apiPost, apiPut } from './api';
+import type { VocabularySummary } from './speakingService';
 
 export type SpeakingProfileData = {
   sessionsAnalyzed: number;
@@ -37,8 +38,17 @@ export type ProfileResponse = {
   nextChallenge: string;
   vocabularyProfile?: {
     totalWordsUsed: number;
-    words: { word: string; count: number }[];
-    targetWords: { word: string; practicedCount: number; improvedCount: number }[];
+    words: {
+      word: string;
+      count: number;
+      lastUsedAt?: string;
+    }[];
+    targetWords: {
+      word: string;
+      introducedAt?: string;
+      practicedCount: number;
+      improvedCount: number;
+    }[];
   };
   preferences?: Preferences;
 };
@@ -143,12 +153,59 @@ export function startConversation(options: {
 
 export function sendMessage(
   conversationId: string,
-  content: string
+  content: string,
+  durationSeconds?: number
 ): Promise<{ conversation: Conversation; aiReply: string }> {
   return apiPost<{ conversation: Conversation; aiReply: string }>(
     `/conversation/${conversationId}/message`,
-    { content }
+    { content, ...(durationSeconds !== undefined ? { durationSeconds } : {}) }
   );
+}
+
+export type RoleplayCompletionResponse = {
+  conversation: Conversation;
+  session: {
+    _id: string;
+    transcript: string;
+    durationSeconds: number;
+    status: string;
+  };
+  analysis: {
+    overall: number;
+    fluency: number;
+    vocabulary: number;
+    grammar: number;
+    pacing: number;
+    fillerCount: number;
+    wordsPerMinute: number;
+    vocabularyDiversity: number;
+    repeatedPhraseCount: number;
+    feedback: string[];
+    strengths: string[];
+    improvedAnswer?: string;
+  };
+  vocabulary?: VocabularySummary;
+};
+
+export function completeRoleplay(
+  conversationId: string
+): Promise<RoleplayCompletionResponse> {
+  return apiPost<RoleplayCompletionResponse>(
+    `/conversation/${conversationId}/complete`,
+    {}
+  );
+}
+
+export function completeDebate(
+  conversationId: string
+): Promise<RoleplayCompletionResponse> {
+  return completeRoleplay(conversationId);
+}
+
+export function completeConversation(
+  conversationId: string
+): Promise<RoleplayCompletionResponse> {
+  return completeRoleplay(conversationId);
 }
 
 export function getConversationHistory(): Promise<{ conversations: Conversation[] }> {

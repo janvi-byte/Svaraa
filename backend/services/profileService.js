@@ -3,6 +3,14 @@ import AnalysisResult from '../models/AnalysisResult.js';
 import SpeakingSession from '../models/SpeakingSession.js';
 
 const SKILLS = ['grammar', 'fluency', 'vocabulary', 'pacing'];
+const PROFILE_METRICS = [
+  'overall',
+  ...SKILLS,
+  'fillerCount',
+  'wordsPerMinute',
+  'vocabularyDiversity',
+  'repeatedPhraseCount',
+];
 const DIFFICULTY_ORDER = ['Easy', 'Medium', 'Hard'];
 const MIN_SESSIONS_FOR_ADAPTIVE = 3;
 const MIN_SESSIONS_FOR_TREND = 5;
@@ -31,6 +39,58 @@ function computeTrends(recentSessions, olderSessions) {
     }
   }
   return trends;
+}
+
+function averageField(sessions, field) {
+  if (!sessions.length) {
+    return 0;
+  }
+
+  return sessions.reduce((sum, session) => {
+    const value = Number(session.analysis[field]);
+    return sum + (Number.isFinite(value) ? value : 0);
+  }, 0) / sessions.length;
+}
+
+function deriveDifficulty(recentAverage) {
+  if (recentAverage >= 85) {
+    return 'Hard';
+  }
+
+  if (recentAverage >= 70) {
+    return 'Medium';
+  }
+
+  return 'Easy';
+}
+
+function toPublicProfile(profile) {
+  if (!profile) {
+    return null;
+  }
+
+  return {
+    _id: profile._id,
+    user: profile.user,
+    sessionsAnalyzed: profile.sessionsAnalyzed,
+    averageOverall: profile.avgOverall,
+    averageGrammar: profile.avgGrammar,
+    averageFluency: profile.avgFluency,
+    averageVocabulary: profile.avgVocabulary,
+    averagePacing: profile.avgPacing,
+    averageWordsPerMinute: profile.avgWpm,
+    averageFillerCount: profile.avgFillerCount,
+    averageVocabularyDiversity: profile.avgVocabularyDiversity,
+    averageRepeatedPhraseCount: profile.avgRepeatedPhraseCount,
+    strongestSkill: profile.strongestSkill,
+    weakestSkill: profile.weakestSkill,
+    improvingSkill: profile.improvingSkill,
+    decliningSkill: profile.decliningSkill,
+    difficulty: profile.currentDifficulty,
+    recentScoreTrend: profile.recentScoreTrend,
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+  };
 }
 
 export async function calculateOrUpdateProfile(userId) {
@@ -82,12 +142,18 @@ export async function calculateOrUpdateProfile(userId) {
   const analysisMap = new Map(analyses.map((a) => [String(a.session), a]));
   const sessionsWithAnalysis = sessions
     .map((s) => ({ ...s, analysis: analysisMap.get(String(s._id)) }))
-    .filter((s) => s.analysis);
+    .filter((s) => {
+      if (!s.analysis || s.analysis.status !== 'complete') {
+        return false;
+      }
+
+      return PROFILE_METRICS.every((field) =>
+        Number.isFinite(Number(s.analysis[field]))
+      );
+    });
 
   const count = sessionsWithAnalysis.length;
-  const avg = (field) =>
-    sessionsWithAnalysis.reduce((sum, s) => sum + (s.analysis[field] || 0), 0) /
-    count;
+  const avg = (field) => averageField(sessionsWithAnalysis, field);
 
   const avgOverall = roundScore(avg('overall'));
   const avgGrammar = roundScore(avg('grammar'));
@@ -147,26 +213,18 @@ export async function calculateOrUpdateProfile(userId) {
     }
   }
 
-  let currentDifficulty = 'Easy';
+  let currentDifficulty = deriveDifficulty(
+    averageField(
+      sessionsWithAnalysis.slice(-Math.min(5, count)),
+      'overall'
+    )
+  );
+
   if (count >= MIN_SESSIONS_FOR_ADAPTIVE) {
     const recentN = Math.min(5, count);
     const recent = sessionsWithAnalysis.slice(-recentN);
-    const recentAvgOverall =
-      recent.reduce((sum, s) => sum + (s.analysis.overall || 0), 0) / recentN;
-    const currentIdx = DIFFICULTY_ORDER.indexOf(
-      skillAverages[strongestSkill] >= 85
-        ? 'Hard'
-        : recentAvgOverall >= 75
-          ? 'Medium'
-          : 'Easy'
-    );
-    if (recentAvgOverall >= 80 && currentIdx < DIFFICULTY_ORDER.length - 1) {
-      currentDifficulty = DIFFICULTY_ORDER[currentIdx + 1];
-    } else if (recentAvgOverall < 50 && currentIdx > 0) {
-      currentDifficulty = DIFFICULTY_ORDER[currentIdx - 1];
-    } else {
-      currentDifficulty = DIFFICULTY_ORDER[currentIdx];
-    }
+    const recentAvgOverall = averageField(recent, 'overall');
+    currentDifficulty = deriveDifficulty(recentAvgOverall);
   }
 
   const recentTopics = sessionsWithAnalysis
@@ -211,4 +269,9 @@ export async function calculateOrUpdateProfile(userId) {
 
 export async function getProfile(userId) {
   return calculateOrUpdateProfile(userId);
+}
+
+export async function getSpeakingProfile(userId) {
+  const profile = await calculateOrUpdateProfile(userId);
+  return toPublicProfile(profile);
 }

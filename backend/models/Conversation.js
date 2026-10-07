@@ -21,6 +21,12 @@ const conversationSchema = new mongoose.Schema(
     scenario: { type: String, trim: true },
     debateTopic: { type: String, trim: true },
     debatePosition: { type: String, enum: ['for', 'against'], default: 'for' },
+    roleplaySession: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SpeakingSession',
+    },
+    spokenDurationSeconds: { type: Number, min: 0, default: 0 },
+    completedAt: { type: Date },
     messages: { type: [messageSchema], default: [] },
   },
   { timestamps: true }

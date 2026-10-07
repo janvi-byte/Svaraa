@@ -35,9 +35,26 @@ export async function analyzeSpeakingSession(
       );
     }
 
+    const vocabularyUpgrades = Array.isArray(
+      payload.vocabulary_upgrades
+    )
+      ? payload.vocabulary_upgrades.map((upgrade) => ({
+          usedWord: upgrade.used_word,
+          suggestedWord: upgrade.suggested_word,
+          meaning: upgrade.meaning,
+          preferredLanguage: upgrade.preferred_language,
+          translation: upgrade.translation,
+          reason: upgrade.reason,
+          examples: Array.isArray(upgrade.examples)
+            ? upgrade.examples
+            : [],
+        }))
+      : [];
+
     return {
       status: 'complete',
       ...payload,
+      vocabulary_upgrades: vocabularyUpgrades,
     };
   } catch (error) {
     console.error('AI analysis error:', error);

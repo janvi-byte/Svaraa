@@ -43,11 +43,17 @@ export async function transcribeAudio(req, res, next) {
       return res.status(aiResponse.status).json({ message });
     }
 
-    return res.json({
+    const response = {
       transcript: payload.transcript || '',
       language: payload.language || 'en',
       duration_seconds: payload.duration_seconds || durationSeconds,
-    });
+    };
+
+    if (Array.isArray(payload.segments)) {
+      response.segments = payload.segments;
+    }
+
+    return res.json(response);
   } catch (error) {
     return next(error);
   }

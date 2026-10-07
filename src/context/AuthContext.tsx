@@ -1,12 +1,19 @@
 import { createContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ApiError, clearStoredAuth, getStoredToken, storeAuth } from '@/services/api';
-import { getProfile, login as loginRequest, register as registerRequest, type AuthUser } from '@/services/authService';
+import {
+  getProfile,
+  login as loginRequest,
+  loginWithGoogle as loginWithGoogleRequest,
+  register as registerRequest,
+  type AuthUser,
+} from '@/services/authService';
 
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 };
@@ -54,6 +61,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await loginRequest(email, password);
       setUser(result.user);
     },
+    async loginWithGoogle(credential) {
+      const result = await loginWithGoogleRequest(credential);
+      setUser(result.user);
+    },
     async register(name, email, password) {
       const result = await registerRequest(name, email, password);
       setUser(result.user);
@@ -66,4 +77,3 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-

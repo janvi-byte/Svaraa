@@ -1,10 +1,69 @@
 import { apiGet, apiPost, apiUpload } from './api';
 
+export type TranscriptionSegment = {
+  start: number;
+  end: number;
+  text: string;
+};
+
 export type TranscriptionResponse = {
   transcript: string;
   language: string;
   duration_seconds: number;
+  segments?: TranscriptionSegment[];
 };
+
+export type PronunciationReference = {
+  id: string;
+  text: string;
+  difficulty: string;
+  category: string;
+};
+
+export type ReferenceAlignmentResponse = {
+  reference: {
+    id: string;
+    text: string;
+  };
+  transcript: string;
+  words?: {
+    word: string;
+    start: number;
+    end: number;
+  }[];
+  comparison?: {
+    referenceWordCount: number;
+    recognizedWordCount: number;
+    missingWords: string[];
+    extraWords: string[];
+    recognizedTextMatchesReference: boolean;
+  };
+};
+
+export function getPronunciationReferences(): Promise<{
+  references: PronunciationReference[];
+}> {
+  return apiGet<{ references: PronunciationReference[] }>(
+    '/speaking/pronunciation-references'
+  );
+}
+
+export function alignReferenceAudio(
+  audio: Blob,
+  referenceId: string,
+  durationSeconds: number
+): Promise<ReferenceAlignmentResponse> {
+  const formData = new FormData();
+  const extension = audio.type.split('/')[1] || 'webm';
+  formData.append('audio', audio, `reference-recording.${extension}`);
+  formData.append('referenceId', referenceId);
+  formData.append('durationSeconds', String(durationSeconds));
+
+  return apiUpload<ReferenceAlignmentResponse>(
+    '/speaking/pronunciation-reference/align',
+    formData
+  );
+}
 
 export function transcribeAudio(
   audio: Blob,
@@ -39,6 +98,21 @@ export type VocabularyUpgrade = {
   examples: string[];
 };
 
+export type RepeatedVocabularyWord = {
+  word: string;
+  count: number;
+};
+
+export type VocabularySummary = {
+  contentWords: string[];
+  uniqueWords: string[];
+  newWords: string[];
+  previouslyUsedWords: string[];
+  repeatedWords: RepeatedVocabularyWord[];
+  contentWordCount: number;
+  contentVocabularyDiversity: number;
+};
+
 export type SpeakingAnalysis = {
   overall: number;
   improved_answer: string;
@@ -55,6 +129,7 @@ export type SpeakingAnalysis = {
   preferred_language: string;
   feedback: string[];
   strengths: string[];
+  vocabularySummary?: VocabularySummary;
 };
 
 export function analyzeSpeaking(
@@ -128,6 +203,39 @@ export function getNextChallenge(
   );
 }
 
+export type PresentationTopic = SpeakingTopic;
+
+export type PresentationTopicsResponse = {
+  topics: PresentationTopic[];
+};
+
+export function getPresentationTopics(): Promise<PresentationTopicsResponse> {
+  return apiGet<PresentationTopicsResponse>('/speaking/presentation-topics');
+}
+
+export function startPresentation(): Promise<StartSpeakingSessionResponse> {
+  return apiPost<StartSpeakingSessionResponse>('/speaking/presentation/start', {});
+}
+
+export type PresentationCompletionResponse = {
+  session: SpeakingSession;
+  analysis: SavedAnalysis;
+  vocabulary?: VocabularySummary;
+  service?: string;
+};
+
+export function completePresentation(
+  sessionId: string,
+  transcript: string,
+  durationSeconds: number,
+  preferredLanguage = 'English'
+): Promise<PresentationCompletionResponse> {
+  return apiPost<PresentationCompletionResponse>(
+    `/speaking/presentation/${sessionId}/complete`,
+    { transcript, durationSeconds, preferredLanguage }
+  );
+}
+
 export type SpeakingProfile = {
   _id?: string;
   user?: string;
@@ -146,6 +254,7 @@ export type SpeakingProfile = {
   improvingSkill: string;
   decliningSkill: string;
   difficulty: string;
+  recentScoreTrend?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -210,6 +319,7 @@ export type SavedAnalysis = SpeakingAnalysis & {
   preferredLanguage?: string;
   improvedAnswer?: string;
   status?: 'pending' | 'complete';
+  vocabulary?: VocabularySummary;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -217,6 +327,7 @@ export type SavedAnalysis = SpeakingAnalysis & {
 export type SubmitSpeakingSessionResponse = {
   session: SpeakingSession;
   analysis: SavedAnalysis;
+  vocabulary?: VocabularySummary;
   service?: string;
 };
 
@@ -242,6 +353,73 @@ export type SpeakingHistoryResponse = {
 
 export function getSpeakingHistory(): Promise<SpeakingHistoryResponse> {
   return apiGet<SpeakingHistoryResponse>('/speaking/history');
+}
+
+export type AnalyticsPoint = {
+  date: string;
+  sessionId: string;
+  value: number;
+};
+
+export type AnalyticsTopic = {
+  title?: string;
+  category?: string;
+  difficulty?: string;
+};
+
+export type AnalyticsRecentSession = {
+  sessionId: string;
+  date: string;
+  durationSeconds: number;
+  overall: number;
+  grammar: number;
+  fluency: number;
+  vocabulary: number;
+  pacing: number;
+  wordsPerMinute: number;
+  fillerCount: number;
+  repeatedPhraseCount: number;
+  vocabularyDiversity: number;
+  retryGroup: string | null;
+  topic?: AnalyticsTopic;
+};
+
+export type AnalyticsMilestone = {
+  type: 'first-session' | 'fifth-session' | 'personal-best';
+  title: string;
+  description: string;
+  sessionId: string;
+  date: string;
+};
+
+export type SpeakingAnalytics = {
+  summary: {
+    sessionsAnalyzed: number;
+    averageOverall: number;
+    bestOverall: number;
+    latestOverall: number;
+    totalSpeakingTimeSeconds: number;
+    strongestSkill?: string;
+    weakestSkill?: string;
+  };
+  timeSeries: {
+    overall: AnalyticsPoint[];
+    grammar: AnalyticsPoint[];
+    fluency: AnalyticsPoint[];
+    vocabulary: AnalyticsPoint[];
+    pacing: AnalyticsPoint[];
+    wordsPerMinute: AnalyticsPoint[];
+    fillerCount: AnalyticsPoint[];
+    repeatedPhraseCount: AnalyticsPoint[];
+    vocabularyDiversity: AnalyticsPoint[];
+    durationSeconds: AnalyticsPoint[];
+  };
+  recentSessions: AnalyticsRecentSession[];
+  milestones: AnalyticsMilestone[];
+};
+
+export function getSpeakingAnalytics(): Promise<SpeakingAnalytics> {
+  return apiGet<SpeakingAnalytics>('/speaking/analytics');
 }
 
 export type AttemptTrend = 'improved' | 'declined' | 'unchanged';

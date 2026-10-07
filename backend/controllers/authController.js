@@ -1,7 +1,10 @@
 import bcrypt from 'bcryptjs';
+import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import Progress from '../models/Progress.js';
 import { generateToken } from '../utils/generateToken.js';
+
+const googleClient = new OAuth2Client();
 
 function serializeUser(user) {
   return {
@@ -10,6 +13,7 @@ function serializeUser(user) {
     email: user.email,
     preferredLanguage: user.preferredLanguage,
     practiceGoal: user.practiceGoal,
+    avatarUrl: user.avatarUrl,
   };
 }
 
@@ -47,12 +51,83 @@ export async function login(req, res, next) {
     }
 
     const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
-    const valid = user && await bcrypt.compare(password, user.password);
+    const valid = Boolean(
+      user?.password && await bcrypt.compare(password, user.password)
+    );
     if (!valid) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     return res.json({ user: serializeUser(user), token: generateToken(user._id.toString()) });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function loginWithGoogle(req, res, next) {
+  try {
+    const { credential } = req.body;
+    const { GOOGLE_CLIENT_ID } = process.env;
+
+    if (!credential || typeof credential !== 'string') {
+      return res.status(400).json({ message: 'Google credential is required' });
+    }
+    if (!GOOGLE_CLIENT_ID) {
+      return res.status(500).json({ message: 'Google authentication is not configured' });
+    }
+
+    let ticket;
+    try {
+      ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: GOOGLE_CLIENT_ID,
+      });
+    } catch {
+      return res.status(401).json({ message: 'Unable to verify Google account' });
+    }
+    const payload = ticket.getPayload();
+
+    if (
+      !payload ||
+      !payload.sub ||
+      !(
+        payload.iss === 'https://accounts.google.com' ||
+        payload.iss === 'accounts.google.com'
+      ) ||
+      !payload.exp ||
+      payload.exp <= Math.floor(Date.now() / 1000) ||
+      !payload.email ||
+      payload.email_verified !== true
+    ) {
+      return res.status(401).json({ message: 'Unable to verify Google account' });
+    }
+
+    const normalizedEmail = payload.email.trim().toLowerCase();
+    let user = await User.findOne({ googleSubjectId: payload.sub });
+
+    if (!user) {
+      const existingLocalUser = await User.findOne({ email: normalizedEmail });
+      if (existingLocalUser) {
+        return res.status(409).json({
+          message: 'An account with this email already exists. Log in with your existing credentials.',
+        });
+      }
+
+      user = await User.create({
+        name: payload.name?.trim() || normalizedEmail,
+        email: normalizedEmail,
+        authProvider: 'google',
+        googleSubjectId: payload.sub,
+        emailVerified: true,
+        avatarUrl: payload.picture,
+      });
+      await Progress.create({ user: user._id });
+    }
+
+    return res.json({
+      user: serializeUser(user),
+      token: generateToken(user._id.toString()),
+    });
   } catch (error) {
     return next(error);
   }
