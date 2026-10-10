@@ -1,0 +1,69 @@
+﻿.account-menu {
+  position: relative;
+}
+
+.account-dropdown {
+  position: absolute;
+  top: calc(100% + 9px);
+  right: 0;
+  z-index: 35;
+  width: min(230px, calc(100vw - 24px));
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  box-shadow: var(--shadow-lift);
+  animation: dropIn var(--t-base) var(--ease-spring) both;
+}
+
+.account-menu-heading {
+  padding: 8px 10px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.account-menu-item {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--r-md);
+  color: var(--ink);
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.account-menu-item:hover {
+  background: var(--paper-subtle);
+}
+
+.account-menu-item svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.account-menu-divider {
+  height: 1px;
+  margin: 6px 2px;
+  background: var(--line);
+}
+
+.account-menu-signout,
+.account-menu-signout svg {
+  color: var(--coral-dark);
+}
+
+.account-menu-signout:hover {
+  background: var(--coral-light);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account-dropdown {
+    animation: none;
+  }
+}

@@ -1,4 +1,4 @@
-import { apiRequest, storeAuth } from './api';
+import { apiPut, apiRequest, getStoredToken, storeAuth } from './api';
 
 export type AuthUser = {
   id: string;
@@ -47,5 +47,17 @@ export async function loginWithGoogle(credential: string): Promise<AuthResponse>
 
 export async function getProfile(): Promise<AuthUser> {
   const result = await apiRequest<ProfileResponse>('/auth/profile');
+  return result.user;
+}
+
+
+export async function updateProfile(name: string): Promise<AuthUser> {
+  const token = getStoredToken();
+  const result = await apiPut<ProfileResponse>('/auth/profile', { name });
+
+  if (token) {
+    storeAuth(token, result.user);
+  }
+
   return result.user;
 }

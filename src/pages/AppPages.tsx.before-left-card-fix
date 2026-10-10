@@ -146,7 +146,7 @@ import {
 type Navigate = (path: string) => void;
 
 const PRACTICE_DURATION_STORAGE_KEY = 'speakora-practice-duration-seconds';
-const PRACTICE_DURATION_OPTIONS_MINUTES = [1, 2, 3] as const;
+const PRACTICE_DURATION_OPTIONS_MINUTES = [5, 10, 15, 20] as const;
 
 const tutors = [
 
@@ -1437,44 +1437,42 @@ function PracticePage({ navigate }: { navigate: Navigate }) {
           <div className="prompt-top">
             <div className="prompt-badges">
               <span className="pill practice-badge-primary">
-                Today's prompt
+                {isRetryAttempt ? 'Retry attempt' : "Today's prompt"}
               </span>
-              <span className="pill practice-badge-skill">Easy</span>
-              <span className="pill practice-badge-category">Environment</span>
-              <span className="pill practice-badge-focus" style={{ background: '#fff', border: '1px solid #dcd5c7', color: '#11181c' }}>Focus mode</span>
+              <span className="pill practice-badge-skill">{topic?.difficulty || 'Easy'}</span>
+              <span className="pill practice-badge-category">{topic?.category || 'General'}</span>
             </div>
           </div>
           <h2>
-            A change you would make to protect nature
+            {topic?.title || 'Your speaking prompt'}
           </h2>
 
           <p>
-            Take a moment to think, then speak naturally.
+            {topic?.prompt ||
+              'Take a moment to think, then speak naturally.'}
           </p>
 
-          <section className="answer-structure" aria-label="Suggested answer structure">
-            <span className="eyebrow" style={{ textTransform: 'uppercase' }}>Structure your answer</span>
+          <div className="answer-structure" aria-label="Suggested answer structure">
+            <span className="eyebrow">Structure your answer</span>
             <div className="answer-structure-chips">
               <div><span>1</span>The problem</div>
               <div><span>2</span>Your change</div>
               <div><span>3</span>The impact</div>
             </div>
-          </section>
-
-          <div className="practice-word-bank">
-            <div className="word-bank-heading">
-              <span className="eyebrow" style={{ textTransform: 'uppercase' }}>Word bank · Build your vocabulary</span>
-              <span className="word-bank-note" style={{ color: '#514936', fontWeight: 600 }}>0 of 5 used</span>
-            </div>
-            <div className="word-bank-tags">
-              <span>conserve</span>
-              <span>sustainable</span>
-              <span>restore</span>
-              <span>reduce reliance</span>
-              <span>long-term</span>
-            </div>
-            <p className="word-bank-instruction">Try to use two or three of these.</p>
           </div>
+
+          {vocabularyTargets.length > 0 && (
+            <div className="practice-word-bank">
+              <div className="word-bank-heading">
+                <span className="eyebrow">Word bank · Build your vocabulary</span>
+                <span className="word-bank-note">0 of {vocabularyTargets.length} used</span>
+              </div>
+              <div className="word-bank-tags">
+                {vocabularyTargets.map((word) => <span key={word}>{word}</span>)}
+              </div>
+              <p className="word-bank-instruction">Try to use two or three of these.</p>
+            </div>
+          )}
 
           <div className="prompt-actions">
             <button
@@ -1496,7 +1494,7 @@ function PracticePage({ navigate }: { navigate: Navigate }) {
         <section className="record-section">
           <div className="record-title">
             <div>
-              <span className="eyebrow" style={{ textTransform: 'uppercase' }}>Your turn</span>
+              <span className="eyebrow">Your turn</span>
             </div>
 
             <span className="record-status">
@@ -1506,7 +1504,7 @@ function PracticePage({ navigate }: { navigate: Navigate }) {
           </div>
 
           <div className="practice-duration-options" role="group" aria-label="Session duration">
-            {[60, 120, 180, 0].map((seconds) => (
+            {durationOptions.map((seconds) => (
               <button
                 key={seconds}
                 type="button"
@@ -1515,7 +1513,9 @@ function PracticePage({ navigate }: { navigate: Navigate }) {
                 disabled={isRecording}
                 onClick={() => selectSessionDuration(seconds)}
               >
-                {seconds === 0 ? 'Open' : `${seconds / 60} min`}
+                {seconds % 60 === 0
+                  ? `${seconds / 60} min`
+                  : `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`}
               </button>
             ))}
           </div>
@@ -1584,14 +1584,11 @@ function PracticePage({ navigate }: { navigate: Navigate }) {
               {submitting ? 'Analyzing…' : 'Get my feedback'}
               {!submitting && <ArrowRight size={16} />}
             </button>
-            <div className="feedback-hints" style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-              <span className="feedback-unlock-note">
-                Unlocks after you speak for at least 10 seconds
-              </span>
-              <span className="practice-privacy-note">
-                <LockKeyhole size={10} /> Private. Only you can hear this.
-              </span>
-            </div>
+            <span className="feedback-unlock-note">
+              {audioBlob
+                ? 'Your response is ready for feedback.'
+                : 'Record your response to unlock feedback.'}
+            </span>
           </div>
         </section>
       </div>

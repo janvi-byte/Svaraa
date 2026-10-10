@@ -136,3 +136,32 @@ export async function loginWithGoogle(req, res, next) {
 export async function getProfile(req, res) {
   res.json({ user: serializeUser(req.user) });
 }
+
+
+export async function updateProfile(req, res, next) {
+  try {
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required.' });
+    }
+
+    if (name.length > 80) {
+      return res.status(400).json({ message: 'Name must be 80 characters or fewer.' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: { name } },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: 'Profile not found.' });
+    }
+
+    return res.json({ user: serializeUser(user) });
+  } catch (error) {
+    return next(error);
+  }
+}

@@ -1,0 +1,209 @@
+﻿.progress-page .progress-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+
+.progress-page .progress-overview,
+.progress-page .progress-grid > .skill-segmented-bar,
+.progress-page .charts-pair,
+.progress-page .progress-sessions {
+  grid-column: 1 / -1;
+}
+
+.progress-page .progress-overview,
+.progress-page .progress-strengths,
+.progress-page .progress-milestones,
+.progress-page .progress-sessions {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  box-shadow: var(--shadow-soft);
+}
+
+.progress-page .progress-overview {
+  padding: 28px;
+  background:
+    radial-gradient(ellipse at 96% 0%, rgba(220, 239, 234, 0.62), transparent 36%),
+    var(--paper);
+}
+
+.progress-page .progress-big {
+  gap: 10px 14px;
+}
+
+.progress-page .progress-big .eyebrow {
+  flex-basis: 100%;
+}
+
+.progress-page .progress-stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 20px;
+}
+
+.progress-page .skill-segmented-bar {
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.progress-page .charts-pair {
+  gap: 20px;
+}
+
+.progress-page .chart-card {
+  min-width: 0;
+  transition: transform var(--t-base) var(--ease-spring), box-shadow var(--t-base) ease;
+}
+
+.progress-page .chart-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
+}
+
+.progress-page .progress-strengths .progress-stat-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.progress-page .progress-session-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 16px 10px;
+  margin: 0 -10px;
+  border-radius: var(--r-md);
+  transition: background-color var(--t-base) ease, transform var(--t-base) var(--ease-spring);
+}
+
+.progress-page .progress-session-row:hover {
+  background: var(--paper-subtle);
+  transform: translateX(3px);
+}
+
+.progress-page .progress-session-row > div {
+  min-width: 0;
+}
+
+.progress-page .progress-session-row strong {
+  display: block;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.progress-page .progress-session-row p {
+  line-height: 1.5;
+}
+
+.progress-page .progress-session-row small {
+  align-self: center;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: var(--paper-subtle);
+  white-space: nowrap;
+}
+
+.progress-page .progress-overview,
+.progress-page .progress-grid > .skill-segmented-bar,
+.progress-page .charts-pair,
+.progress-page .progress-strengths,
+.progress-page .progress-milestones,
+.progress-page .progress-sessions {
+  animation: progressRise 520ms var(--ease-spring) both;
+}
+
+.progress-page .progress-grid > .skill-segmented-bar { animation-delay: 50ms; }
+.progress-page .charts-pair { animation-delay: 90ms; }
+.progress-page .progress-strengths { animation-delay: 130ms; }
+.progress-page .progress-milestones { animation-delay: 170ms; }
+.progress-page .progress-sessions { animation-delay: 210ms; }
+
+@keyframes progressRise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 900px) {
+  .progress-page .progress-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .progress-page .progress-strengths,
+  .progress-page .progress-milestones {
+    grid-column: 1 / -1;
+  }
+
+  .progress-page .charts-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .progress-page .page {
+    padding: 24px 18px 40px;
+  }
+
+  .progress-page .progress-overview,
+  .progress-page .progress-strengths,
+  .progress-page .progress-milestones,
+  .progress-page .progress-sessions,
+  .progress-page .chart-card {
+    padding: 20px;
+  }
+
+  .progress-page .progress-stat-row,
+  .progress-page .progress-strengths .progress-stat-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 12px;
+  }
+
+  .progress-page .skill-segmented-bar {
+    width: 100%;
+    justify-content: flex-start;
+    border-radius: 14px;
+  }
+
+  .progress-page .skill-tab-btn {
+    flex: 1 1 auto;
+    padding-inline: 10px;
+  }
+
+  .progress-page .progress-session-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  .progress-page .progress-session-row small {
+    justify-self: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-page .page,
+  .progress-page .bar,
+  .progress-page .skill-tab-btn {
+    animation: none;
+    transition: none;
+  }
+
+  .progress-page .progress-overview,
+  .progress-page .progress-grid > .skill-segmented-bar,
+  .progress-page .charts-pair,
+  .progress-page .progress-strengths,
+  .progress-page .progress-milestones,
+  .progress-page .progress-sessions {
+    animation: none;
+  }
+
+  .progress-page .chart-card,
+  .progress-page .progress-session-row {
+    transition: none;
+  }
+}

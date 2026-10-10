@@ -6,6 +6,7 @@ import {
   login as loginRequest,
   loginWithGoogle as loginWithGoogleRequest,
   register as registerRequest,
+  updateProfile as updateProfileRequest,
   type AuthUser,
 } from '@/services/authService';
 
@@ -15,6 +16,7 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: (credential: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  updateProfile: (name: string) => Promise<void>;
   logout: () => void;
 };
 
@@ -68,6 +70,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async register(name, email, password) {
       const result = await registerRequest(name, email, password);
       setUser(result.user);
+    },
+    async updateProfile(name) {
+      const updatedUser = await updateProfileRequest(name);
+      setUser(updatedUser);
     },
     logout() {
       clearStoredAuth();

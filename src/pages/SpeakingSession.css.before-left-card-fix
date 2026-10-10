@@ -1,0 +1,841 @@
+/* Restore the established speaking-session appearance without changing the shared styles. */
+.practice-session-page {
+  display: contents;
+  color: var(--ink);
+  font-family: var(--font-ui);
+}
+
+.practice-session-page .page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 55px 56px 80px;
+  position: relative;
+  background: var(--cream);
+  animation: none;
+}
+
+.practice-session-page .page-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  margin-bottom: 42px;
+}
+
+.practice-session-page .page-heading h1 {
+  font-size: 46px;
+  line-height: 1.06;
+  letter-spacing: -0.06em;
+  margin: 10px 0 0;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.practice-session-page .page-heading h1 em {
+  font-size: 1em;
+  font-family: Fraunces, serif;
+  font-weight: 500;
+  color: var(--coral);
+}
+
+.practice-session-page .eyebrow {
+  display: block;
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: #77817e;
+}
+
+.practice-session-page .lead {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 560px;
+  margin: 14px 0 0;
+}
+
+.practice-session-page .back-link {
+  position: absolute;
+  top: 25px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  color: #7a8783;
+  font-size: 12px;
+  font-weight: 400;
+  margin: 0;
+  padding: 0;
+}
+
+.practice-session-page .heading-action {
+  align-self: center;
+  margin-top: 0;
+}
+
+.practice-session-page .timer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: #697774;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 400;
+  background: transparent;
+}
+
+.practice-session-page .button {
+  border: 0;
+  border-radius: 7px;
+  padding: 14px 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: none;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.practice-session-page .button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px #1b3c3c18;
+}
+
+.practice-session-page .button:active:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.practice-session-page .button.primary {
+  background: var(--coral);
+  color: #fff;
+}
+
+.practice-session-page .text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.practice-session-page .icon-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: transparent;
+}
+
+.practice-session-page .icon-button.subtle {
+  color: #80908a;
+  background: #f0f3ed;
+}
+
+.practice-session-page .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 99px;
+  background: #f6d98a;
+  color: #725b25;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: 0;
+  border: 0;
+}
+
+.practice-session-page .pill.light {
+  background: #ffffff7d;
+  color: #326963;
+}
+
+.practice-session-page .practice-layout {
+  display: grid;
+  grid-template-columns: 0.95fr 1.35fr;
+  gap: 20px;
+}
+
+.practice-session-page .page-heading {
+  margin-bottom: 24px;
+}
+
+.practice-session-page .practice-steps {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+  color: #87918e;
+  font: 11px 'DM Mono', monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.practice-session-page .practice-steps .step {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.practice-session-page .practice-steps .step > span {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  place-items: center;
+  border: 1px solid #dfe5df;
+  border-radius: 50%;
+  font: 10px 'DM Sans', sans-serif;
+  letter-spacing: 0;
+}
+
+.practice-session-page .practice-steps .step.done {
+  color: #287c72;
+}
+
+.practice-session-page .practice-steps .step.done > span {
+  border-color: #bce8df;
+  background: #bce8df;
+  color: #193b3c;
+}
+
+.practice-session-page .practice-steps .step.active {
+  color: #193b3c;
+}
+
+.practice-session-page .practice-steps .step.active > span {
+  border-color: #f47f67;
+  background: #f47f67;
+  color: #fff;
+}
+
+.practice-session-page .practice-steps .arrow {
+  color: #abb5b1;
+}
+
+/* Quick Practice follows the compact, two-card composition from the reference. */
+.practice-session-page .page {
+  padding: 68px 32px 32px;
+}
+
+.practice-session-page .page-heading {
+  margin: 0 0 20px;
+}
+
+.practice-session-page .page-heading h1 {
+  margin-top: 8px;
+  font-size: clamp(30px, 3.1vw, 38px);
+  line-height: 1.12;
+  letter-spacing: -0.045em;
+  white-space: normal;
+}
+
+.practice-session-page .page-heading h1 em {
+  color: #bf392b;
+  font: inherit;
+}
+
+.practice-session-page .page-heading .lead {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.practice-session-page .back-link {
+  top: 27px;
+  left: 32px;
+  color: #287c72;
+  font-size: 11px;
+}
+
+.practice-session-page .practice-steps {
+  position: absolute;
+  top: 27px;
+  right: 32px;
+  z-index: 1;
+  gap: 10px;
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.practice-session-page .practice-steps .step > span {
+  width: 16px;
+  height: 16px;
+  flex-basis: 16px;
+}
+
+.practice-session-page .practice-steps .arrow {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.practice-session-page .practice-layout {
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.practice-session-page .prompt-card,
+.practice-session-page .record-section {
+  min-width: 0;
+  border: 1px solid #eee8dc;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: none;
+  padding: 18px;
+}
+
+.practice-session-page .prompt-card {
+  display: flex;
+  min-height: 508px;
+  flex-direction: column;
+}
+
+.practice-session-page .prompt-top {
+  justify-content: flex-start;
+}
+
+.practice-session-page .prompt-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.practice-session-page .prompt-card .pill {
+  padding: 5px 9px;
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.practice-session-page .practice-badge-primary {
+  background: #f1eadb;
+  color: #493f30;
+}
+
+.practice-session-page .practice-badge-skill {
+  background: #d9f0e8;
+  color: #286f61;
+}
+
+.practice-session-page .practice-badge-category {
+  background: #f2ebdc;
+  color: #6d6048;
+}
+
+.practice-session-page .prompt-card h2 {
+  margin: 18px 0 10px;
+  font-size: clamp(21px, 2vw, 25px);
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+
+.practice-session-page .prompt-card > p {
+  max-width: none;
+  color: #63716e;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.practice-session-page .answer-structure {
+  margin-top: 16px;
+}
+
+.practice-session-page .answer-structure .eyebrow {
+  width: 100%;
+  margin-bottom: 8px;
+  font-size: 9px;
+  color: #455753;
+}
+
+.practice-session-page .answer-structure > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.practice-session-page .answer-structure > div > div {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: #f6f3ed;
+  color: #4c5754;
+  font-size: 10px;
+}
+
+.practice-session-page .answer-structure > div span {
+  color: #bf392b;
+  font-weight: 600;
+}
+
+.practice-session-page .practice-word-bank {
+  margin-top: 14px;
+  padding: 11px;
+  border-radius: 10px;
+  background: #fbf1d4;
+}
+
+.practice-session-page .word-bank-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.practice-session-page .practice-word-bank .eyebrow {
+  color: #625331;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.practice-session-page .word-bank-note {
+  display: block;
+  color: #625331;
+  font-size: 10px;
+}
+
+.practice-session-page .word-bank-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.practice-session-page .word-bank-tags span {
+  max-width: 100%;
+  padding: 4px 8px;
+  border-radius: 99px;
+  background: #fff;
+  color: #514936;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.practice-session-page .word-bank-instruction {
+  margin: 10px 0 0;
+  color: #625331;
+  font-size: 11px;
+}
+
+.practice-session-page .prompt-note {
+  margin-top: 12px;
+}
+
+.practice-session-page .prompt-note p {
+  margin: 5px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.practice-session-page .prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: auto;
+  padding-top: 18px;
+}
+
+.practice-session-page .prompt-actions .practice-another {
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid #8ebdb4;
+  border-radius: 8px;
+  background: #fff;
+  color: #287c72;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.practice-session-page .prompt-actions .practice-read-aloud {
+  padding: 0;
+  color: #287c72;
+  font-size: 10px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.practice-session-page .record-section {
+  display: flex;
+  min-height: 508px;
+  flex-direction: column;
+  padding: 18px;
+}
+
+.practice-session-page .record-title {
+  margin: 0;
+}
+
+.practice-session-page .record-title .eyebrow {
+  color: #354a46;
+  letter-spacing: 0.08em;
+}
+
+.practice-session-page .record-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 9px;
+  border-radius: 99px;
+  background: #f6f3ed;
+  color: #455753;
+  font-size: 10px;
+}
+
+.practice-session-page .record-status .live-dot {
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  background: #bf392b;
+  box-shadow: none;
+}
+
+.practice-session-page .record-status .live-dot.is-live {
+  background: #287c72;
+  animation: practiceStatusPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes practiceStatusPulse {
+  50% { box-shadow: 0 0 0 4px #287c7222; }
+}
+
+.practice-session-page .practice-duration-options {
+  display: flex;
+  align-self: center;
+  gap: 3px;
+  margin-top: 12px;
+  padding: 3px;
+  border-radius: 9px;
+  background: #f6f3ed;
+}
+
+.practice-session-page .practice-duration-options button {
+  min-width: 54px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #4f5855;
+  cursor: pointer;
+  font: 10px 'DM Sans', sans-serif;
+  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.practice-session-page .practice-duration-options button.selected {
+  background: #fff;
+  color: #182d2a;
+  box-shadow: 0 1px 3px #182d2a20;
+}
+
+.practice-session-page .practice-duration-options button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.practice-session-page .practice-timer-dial {
+  display: flex;
+  width: 138px;
+  height: 138px;
+  flex: 0 0 138px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  margin: 14px auto 4px;
+  border: 5px solid #bf392b;
+  border-radius: 50%;
+  color: #172b2b;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.practice-session-page .practice-timer-dial.is-recording {
+  box-shadow: 0 0 0 6px #bf392b18;
+}
+
+.practice-session-page .practice-timer-value {
+  font: 32px 'DM Mono', monospace;
+  letter-spacing: -0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.practice-session-page .practice-timer-label {
+  margin-top: 1px;
+  color: #7b8581;
+  font-size: 9px;
+}
+
+.practice-session-page .recorder {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.practice-session-page .recorder-wave {
+  order: 1;
+  width: 100%;
+  height: 22px;
+  flex: 0 0 22px;
+  gap: 3px;
+  margin: 0;
+  overflow: hidden;
+}
+
+.practice-session-page .recorder-wave span {
+  width: 3px;
+  max-height: 9px;
+  background: #d7c9a8;
+}
+
+.practice-session-page .recorder-wave span:nth-child(3n) {
+  background: #d7c9a8;
+}
+
+.practice-session-page .recorder-wave span.live {
+  background: #bf392b;
+}
+
+.practice-session-page .recorder-footer {
+  display: contents;
+}
+
+.practice-session-page .record-time,
+.practice-session-page .record-hint {
+  display: none;
+}
+
+.practice-session-page .record-controls {
+  order: 2;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.practice-session-page .record-controls .icon-button {
+  width: 32px;
+  height: 32px;
+}
+
+.practice-session-page .record-button {
+  width: 58px;
+  height: 58px;
+  box-shadow: 0 0 0 7px #f7dfda;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.practice-session-page .record-button:hover {
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: 0 0 0 8px #f7dfda;
+}
+
+.practice-session-page .practice-mic-hint {
+  margin: 15px 0 0;
+  color: #293b38;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.practice-session-page .practice-mic-hint span {
+  display: block;
+  margin-top: 5px;
+  color: #77817e;
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.practice-session-page .record-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 13px;
+  padding-top: 12px;
+  border-top: 1px solid #eee8dc;
+}
+
+.practice-session-page .record-footer .button {
+  width: 100%;
+  min-height: 38px;
+  justify-content: center;
+  padding: 9px 13px;
+  border-radius: 9px;
+  background: #ece6d8;
+  color: #52615d;
+  font-size: 11px;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.practice-session-page .record-footer .button:disabled {
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.practice-session-page .record-footer .button:not(:disabled) {
+  background: #bf392b;
+  color: #fff;
+}
+
+.practice-session-page .feedback-unlock-note,
+.practice-session-page .practice-privacy-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: #84908b;
+  font-size: 9px;
+  text-align: center;
+}
+
+.practice-session-page .record-footer .practice-privacy-note {
+  color: #77817e;
+}
+
+@keyframes practiceWavePulse {
+  to { transform: scaleY(1.5); opacity: 0.65; }
+}
+
+.practice-session-page .prompt-card,
+.practice-session-page .record-section {
+  animation: practicePanelEnter 320ms ease-out both;
+  transition: transform 180ms ease-out, box-shadow 180ms ease-out;
+}
+
+.practice-session-page .record-section {
+  animation-delay: 60ms;
+}
+
+.practice-session-page .prompt-card:hover,
+.practice-session-page .record-section:hover {
+  transform: translateY(-2px);
+}
+
+@keyframes practicePanelEnter {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .practice-session-page .prompt-card,
+  .practice-session-page .record-section {
+    animation: none;
+  }
+
+  .practice-session-page .prompt-card:hover,
+  .practice-session-page .record-section:hover {
+    transform: none;
+    transition: none;
+  }
+
+  .practice-session-page .button,
+  .practice-session-page .recorder-wave span {
+    transition: none;
+  }
+
+  .practice-session-page .recorder-wave span.live {
+    animation: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .practice-session-page .page {
+    padding: 68px 25px 32px;
+  }
+
+  .practice-session-page .back-link {
+    left: 25px;
+  }
+
+  .practice-session-page .practice-steps {
+    right: 25px;
+  }
+}
+
+@media (max-width: 620px) {
+  .practice-session-page .page {
+    padding: 68px 16px 28px;
+  }
+
+  .practice-session-page .back-link {
+    top: 22px;
+    left: 16px;
+  }
+
+  .practice-session-page .practice-steps {
+    top: 20px;
+    right: 16px;
+    gap: 6px;
+    font-size: 9px;
+  }
+
+  .practice-session-page .practice-steps .step {
+    gap: 4px;
+  }
+
+  .practice-session-page .practice-steps .step > span {
+    width: 15px;
+    height: 15px;
+    flex-basis: 15px;
+  }
+
+  .practice-session-page .practice-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .practice-session-page .prompt-card,
+  .practice-session-page .record-section {
+    min-height: 0;
+    padding: 18px;
+  }
+
+  .practice-session-page .prompt-card h2 {
+    margin-top: 22px;
+  }
+
+  .practice-session-page .prompt-actions {
+    margin-top: 24px;
+  }
+
+  .practice-session-page .practice-duration-options {
+    max-width: 100%;
+  }
+
+  .practice-session-page .practice-duration-options button {
+    min-width: 0;
+    padding-inline: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .practice-session-page .record-status .live-dot.is-live {
+    animation: none;
+  }
+
+  .practice-session-page .practice-duration-options button,
+  .practice-session-page .practice-timer-dial,
+  .practice-session-page .record-button,
+  .practice-session-page .record-footer .button {
+    transition: none;
+  }
+}

@@ -1,5 +1,6 @@
-import { Bell, ChevronDown, Menu, Sparkles, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Bell, ChevronDown, LogOut, Menu, Sparkles, UserRound, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import './AccountMenu.css';
 import { useAuth } from '@/hooks/useAuth';
 import {
   getSpeakingHistory,
@@ -18,13 +19,15 @@ type NavbarProps = {
 };
 
 export function Navbar({ onMenu, onNavigate }: NavbarProps) {
-  const { user } = useAuth();
+  const { logout, user } = useAuth();
   const [sessions, setSessions] = useState<SpeakingSession[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const displayName = user?.name || 'Alex Rivera';
+  const displayName = user?.name || 'Account';
   const initials = displayName
     .split(' ')
     .map((part) => part[0])
@@ -71,6 +74,26 @@ export function Navbar({ onMenu, onNavigate }: NavbarProps) {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!showAccountMenu) return;
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node)) {
+        setShowAccountMenu(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowAccountMenu(false);
+    };
+
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [showAccountMenu]);
 
   const analyzedSessions = sessions.filter(
     (session) =>
@@ -229,14 +252,48 @@ export function Navbar({ onMenu, onNavigate }: NavbarProps) {
           )}
         </div>
 
-        <button
-          className="profile-chip"
-          onClick={() => onNavigate('/profile')}
-        >
-          <span className="avatar small">{initials}</span>
-          <span className="profile-name">{displayName}</span>
-          <ChevronDown size={16} />
-        </button>
+        <div className="account-menu" ref={accountMenuRef}>
+          <button
+            className="profile-chip"
+            aria-label="Open account menu"
+            aria-expanded={showAccountMenu}
+            aria-haspopup="menu"
+            aria-controls="account-menu-dropdown"
+            onClick={() => setShowAccountMenu((open) => !open)}
+          >
+            <span className="avatar small">{initials}</span>
+            <span className="profile-name">{displayName}</span>
+            <ChevronDown size={16} />
+          </button>
+
+          {showAccountMenu && (
+            <div className="account-dropdown" id="account-menu-dropdown" role="menu" aria-label="Account menu">
+              <div className="account-menu-heading">{displayName}</div>
+              <button
+                className="account-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  setShowAccountMenu(false);
+                  onNavigate('/profile');
+                }}
+              >
+                <UserRound size={16} /> Profile &amp; settings
+              </button>
+              <div className="account-menu-divider" />
+              <button
+                className="account-menu-item account-menu-signout"
+                role="menuitem"
+                onClick={() => {
+                  logout();
+                  setShowAccountMenu(false);
+                  onNavigate('/');
+                }}
+              >
+                <LogOut size={16} /> Sign out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

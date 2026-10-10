@@ -1,0 +1,359 @@
+﻿.profile-page .profile-layout {
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.profile-page .profile-card,
+.profile-page .profile-preferences-card,
+.profile-page .feedback-section {
+  min-width: 0;
+}
+
+.profile-page .profile-main {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0 12px;
+  padding: 0 22px 22px;
+}
+
+.profile-page .profile-avatar {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.profile-page .profile-edit-button {
+  grid-column: 2;
+  grid-row: 1;
+  margin-top: -22px;
+}
+
+.profile-page .profile-main h2,
+.profile-page .profile-main > p,
+.profile-page .profile-details,
+.profile-page .profile-success {
+  grid-column: 1 / -1;
+}
+
+.profile-page .profile-main h2 {
+  font-weight: 600;
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+}
+
+.profile-page .profile-main > p {
+  overflow-wrap: anywhere;
+}
+
+.profile-page .profile-details span {
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.profile-page .section-heading h2 {
+  font-weight: 600;
+}
+
+.profile-page .score-card > strong {
+  font-weight: 500;
+  font-size: 27px;
+}
+
+.profile-page .score-label {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.045em;
+}
+
+.profile-page .vocabulary-item strong {
+  font-weight: 500;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.profile-page .profile-vocabulary-list {
+  grid-template-columns: minmax(150px, 0.65fr) minmax(0, 1.35fr);
+  gap: 12px;
+}
+
+.profile-page .profile-vocabulary-list .vocabulary-item {
+  min-width: 0;
+  align-items: center;
+  padding: 14px 16px;
+  transition: border-color var(--t-fast) ease, box-shadow var(--t-fast) ease,
+    transform var(--t-fast) ease;
+}
+
+.profile-page .profile-vocabulary-list .vocabulary-item:hover {
+  border-color: rgba(14, 124, 114, 0.28);
+  box-shadow: 0 8px 20px rgba(31, 50, 46, 0.06);
+  transform: translateY(-2px);
+}
+
+.profile-page .profile-vocabulary-summary > div {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+}
+
+.profile-page .profile-vocabulary-total {
+  font-size: 27px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.profile-page .profile-vocabulary-list .vocabulary-meaning {
+  white-space: normal;
+}
+
+.profile-page .profile-speaking-metrics {
+  display: grid;
+  gap: 12px;
+}
+
+.profile-page .profile-speaking-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profile-page .profile-speaking-skills {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.profile-page .profile-speaking-metrics .score-card {
+  min-width: 0;
+  padding: 14px 15px;
+  border-radius: var(--r-md);
+  transition: border-color var(--t-fast) ease, box-shadow var(--t-fast) ease,
+    transform var(--t-fast) ease;
+}
+
+.profile-page .profile-speaking-metrics .score-card:hover {
+  border-color: rgba(14, 124, 114, 0.28);
+  box-shadow: 0 8px 20px rgba(31, 50, 46, 0.06);
+  transform: translateY(-2px);
+}
+
+.profile-page .profile-speaking-metrics .score-check {
+  display: none;
+}
+
+.profile-page .profile-speaking-metrics .score-label {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.profile-page .profile-speaking-metrics .score-card > strong {
+  margin-top: 8px;
+  font-size: 25px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.profile-page .profile-speaking-summary .score-card > strong {
+  font-size: 23px;
+}
+
+.profile-page .answer-label {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.profile-page .profile-preferences-card {
+  padding: 24px;
+}
+
+.profile-page .profile-preferences-card .section-heading {
+  margin-bottom: 18px;
+}
+
+.profile-page .profile-preferences-form {
+  display: grid;
+  gap: 14px;
+}
+
+.profile-page .profile-preference-fields label + label {
+  margin-top: 0;
+}
+
+.profile-page .profile-preference-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.profile-page .profile-preferences-form label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.profile-page .profile-preferences-form input,
+.profile-page .profile-preferences-form select,
+.profile-edit-dialog input {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 400;
+  transition: border-color var(--t-fast) ease, box-shadow var(--t-fast) ease;
+}
+
+.profile-page .profile-preferences-form input:focus,
+.profile-page .profile-preferences-form select:focus,
+.profile-edit-dialog input:focus {
+  outline: none;
+  border-color: var(--teal-primary);
+  box-shadow: 0 0 0 3px rgba(14, 124, 114, 0.12);
+}
+
+.profile-page .profile-preferences-form > .button {
+  justify-self: start;
+}
+
+.profile-page .profile-success,
+.profile-page .profile-form-success,
+.profile-page .profile-form-message,
+.profile-page .profile-form-error {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.profile-page .profile-success,
+.profile-page .profile-form-success {
+  color: var(--teal-dark);
+}
+
+.profile-page .profile-form-error {
+  color: var(--coral-dark);
+}
+
+.profile-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(28, 26, 23, 0.42);
+  backdrop-filter: blur(3px);
+  animation: profileFadeIn 160ms ease-out both;
+}
+
+.profile-edit-dialog {
+  width: min(100%, 440px);
+  display: grid;
+  gap: 10px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  box-shadow: var(--shadow-lift);
+  animation: profileDialogIn 220ms var(--ease-spring) both;
+}
+
+.profile-edit-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.profile-edit-dialog label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.profile-field-hint {
+  color: var(--muted-light);
+  font-size: 11.5px;
+}
+
+.profile-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+@keyframes profileFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes profileDialogIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 900px) {
+  .profile-page .profile-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-page .profile-speaking-skills {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .profile-page .profile-vocabulary-list,
+  .profile-page .profile-speaking-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-page .profile-vocabulary-targets {
+    grid-column: 1 / -1;
+  }
+
+  .profile-page .profile-speaking-metrics .score-card {
+    padding: 13px;
+  }
+
+  .profile-page .profile-speaking-metrics .score-card > strong {
+    font-size: 22px;
+  }
+
+  .profile-page .profile-preference-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-page .profile-preferences-card {
+    padding: 20px;
+  }
+
+  .profile-page .score-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-edit-dialog {
+    padding: 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-modal-backdrop,
+  .profile-edit-dialog,
+  .profile-page .profile-vocabulary-list .vocabulary-item,
+  .profile-page .profile-speaking-metrics .score-card {
+    animation: none;
+    transition: none;
+  }
+
+  .profile-page .profile-vocabulary-list .vocabulary-item:hover,
+  .profile-page .profile-speaking-metrics .score-card:hover {
+    transform: none;
+  }
+}

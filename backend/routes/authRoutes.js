@@ -4,6 +4,7 @@ import {
   login,
   loginWithGoogle,
   register,
+  updateProfile,
 } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -12,4 +13,5 @@ router.post('/register', register);
 router.post('/login', login);
 router.post('/google', loginWithGoogle);
 router.get('/profile', protect, getProfile);
+router.put('/profile', protect, updateProfile);
 export default router;
